@@ -4,30 +4,17 @@
 <table class="table border " id='company_table'>
     <thead class="thead-dark">
         <tr>
-            <th scope="col" id='state' onclick="table_sort(event, 0)">
-                <span class='text-light me-1'>Full Name</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 1)">
-                <span class='text-light me-1'>Company Name</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 2)">
-                <span class='text-light me-1'>Current Position</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 3)">
-                <span class='text-light me-1'>Email</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 4)">
-                <span class='text-light me-1'>Phone</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 5)">
-                <span class='text-light me-1'>City</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 6)">
-                <span class='text-light me-1'>LinkedIn</span>
-            </th>
-            <th scope="col" class="order" onclick="table_sort(event, 7)">
-                <span class='text-light me-1'>Skills</span>
-            </th>
+            {% for field in field_names %}
+                <th scope="col" id='state' onclick="table_sort(event, {{ forloop.counter0 }})" data-col='' >
+                    <span class='text-light me-1'>{{field | title}}</span>
+                    <span>
+                        <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M6 1L5.29289 0.292893C5.68342 -0.0976313 6.31658 -0.0976313 6.70711 0.292893L6 1ZM7 16C7 16.5523 6.55229 17 6 17C5.44772 17 5 16.5523 5 16L7 16ZM0.292893 5.29289L5.29289 0.292893L6.70711 1.70711L1.70711 6.70711L0.292893 5.29289ZM6.70711 0.292893L11.7071 5.29289L10.2929 6.70711L5.29289 1.70711L6.70711 0.292893ZM7 1L7 16L5 16L5 1L7 1Z" fill="white"/>
+                            <path d="M14 21L13.2929 21.7071C13.6834 22.0976 14.3166 22.0976 14.7071 21.7071L14 21ZM15 6C15 5.44772 14.5523 5 14 5C13.4477 5 13 5.44772 13 6L15 6ZM8.29289 16.7071L13.2929 21.7071L14.7071 20.2929L9.70711 15.2929L8.29289 16.7071ZM14.7071 21.7071L19.7071 16.7071L18.2929 15.2929L13.2929 20.2929L14.7071 21.7071ZM15 21L15 6L13 6L13 21L15 21Z" fill="white"/>
+                        </svg>
+                    </span>
+                </th>
+            {% endfor %}
             <th scope="col" class="order">
                 <span class='text-light me-1'>Resolve</span>
             </th>
@@ -37,20 +24,49 @@
         {% for item in page_obj %}
         <tr class="spacer"></tr>
         <tr class="group-start">
-            <td title="{{item.original_profile.full_name}}">{{item.original_profile.full_name}}</td>
-            <td title="{{item.original_profile.company_name}}">{{item.original_profile.company_name}}</td>
-            <td title="{{item.original_profile.current_position}}">{{item.original_profile.current_position}}</td>
-            <td title="{{item.original_profile.email1}}">{{item.original_profile.email1}}</td>
-            <td title="{{item.original_profile.phone1}}">{{item.original_profile.phone1}}</td>
-            <td title="{{item.original_profile.person_city}}">{{item.original_profile.person_city}}</td>
-            <td><a href="{{item.original_profile.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
+            <td title="{{item.full_name}}">{{item.full_name}}</td>
+            <td title="{{item.first_name}}">{{item.first_name}}</td>
+            <td title="{{item.last_name}}">{{item.last_name}}</td>
+            <td title="{{item.headline}}">{{item.headline}}</td>
+            <td title="{{item.current_position}}">{{item.current_position}}</td>
+            <td title="{{item.company_name}}">{{item.company_name}}</td>
+            <td title="{{item.person_city}}">{{item.person_city}}</td>
+            <td title="{{item.person_state}}">{{item.person_state}}</td>
+            <td title="{{item.person_country}}">{{item.person_country}}</td>
+            <td title="{{item.person_industry}}">{{item.person_industry}}</td>
+            <td title="{{item.tags}}">{{item.tags}}</td>
             <td class="skills-row">
                 <div class="skills-cotainer">
-                    {% for skills in item.original_profile.person_skills|values_from_comma_separated_string %}
+                    {% for skills in item.person_skills|values_from_comma_separated_string %}
                     <span>{{skills}}</span>
                     {% endfor %}
                 </div>
             </td>
+            <td title="{{item.education_experience}}">{{item.education_experience}}</td>
+            <td><a href="{{item.company_website}}" target="_blank">Company Website</a></td>
+            <td title="{{item.email1}}">{{item.email1}}</td>
+            <td title="{{item.email2}}">{{item.email2}}</td>
+            <td title="{{item.phone1}}">{{item.phone1}}</td>
+            <td title="{{item.phone2}}">{{item.phone2}}</td>
+            <td><a href="{{item.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
+            <td title="{{item.company_size_from}}">{{item.company_size_from}}</td>
+            <td title="{{item.company_size_to}}">{{item.company_size_to}}</td>
+            <td title="{{item.current_position_2}}">{{item.current_position_2}}</td>
+            <td title="{{item.current_company_2}}">{{item.current_company_2}}</td>
+            <td title="{{item.previous_position_2}}">{{item.previous_position_2}}</td>
+            <td title="{{item.previous_company_2}}">{{item.previous_company_2}}</td>
+            <td title="{{item.previous_position_3}}">{{item.previous_position_3}}</td>
+            <td title="{{item.previous_company_3}}">{{item.previous_company_3}}</td>
+            <td title="{{item.company_city}}">{{item.company_city}}</td>
+            <td title="{{item.company_state}}">{{item.company_state}}</td>
+            <td title="{{item.company_country}}">{{item.company_country}}</td>
+            <td><a href="{{item.person_angellist_url}}" target="_blank">AngelList</a></td>
+            <td><a href="{{item.person_crunchbase_url}}" target="_blank">Crunchbase</a></td>
+            <td><a href="{{item.person_twitter_url}}" target="_blank">Twitter</a></td>
+            <td><a href="{{item.person_facebook_url}}" target="_blank">Facebook</a></td>
+            <td><a href="{{item.company_linkedin_url}}" target="_blank">Company Linkedin</a></td>
+            <td><a href="{{item.person_image_url}}" target="_blank">Person Image</a></td>
+            <td><a href="{{item.company_logo_url}}" target="_blank">Company Logo</a></td>
             <td class="action-btn-td">
                 <div class="action-btns-container">
                     <svg onclick="resolveConflict('{{item.original_profile.id}}', '{{item.id}}', 'original');" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -74,12 +90,16 @@
         </tr>
         <tr class="group-end">
             <td title="{{item.full_name}}">{{item.full_name}}</td>
-            <td title="{{item.company_name}}">{{item.company_name}}</td>
+            <td title="{{item.first_name}}">{{item.first_name}}</td>
+            <td title="{{item.last_name}}">{{item.last_name}}</td>
+            <td title="{{item.headline}}">{{item.headline}}</td>
             <td title="{{item.current_position}}">{{item.current_position}}</td>
-            <td title="{{item.email1}}">{{item.email1}}</td>
-            <td title="{{item.phone1}}">{{item.phone1}}</td>
+            <td title="{{item.company_name}}">{{item.company_name}}</td>
             <td title="{{item.person_city}}">{{item.person_city}}</td>
-            <td><a href="{{item.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
+            <td title="{{item.person_state}}">{{item.person_state}}</td>
+            <td title="{{item.person_country}}">{{item.person_country}}</td>
+            <td title="{{item.person_industry}}">{{item.person_industry}}</td>
+            <td title="{{item.tags}}">{{item.tags}}</td>
             <td class="skills-row">
                 <div class="skills-cotainer">
                     {% for skills in item.person_skills|values_from_comma_separated_string %}
@@ -87,6 +107,31 @@
                     {% endfor %}
                 </div>
             </td>
+            <td title="{{item.education_experience}}">{{item.education_experience}}</td>
+            <td><a href="{{item.company_website}}" target="_blank">Company Website</a></td>
+            <td title="{{item.email1}}">{{item.email1}}</td>
+            <td title="{{item.email2}}">{{item.email2}}</td>
+            <td title="{{item.phone1}}">{{item.phone1}}</td>
+            <td title="{{item.phone2}}">{{item.phone2}}</td>
+            <td><a href="{{item.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
+            <td title="{{item.company_size_from}}">{{item.company_size_from}}</td>
+            <td title="{{item.company_size_to}}">{{item.company_size_to}}</td>
+            <td title="{{item.current_position_2}}">{{item.current_position_2}}</td>
+            <td title="{{item.current_company_2}}">{{item.current_company_2}}</td>
+            <td title="{{item.previous_position_2}}">{{item.previous_position_2}}</td>
+            <td title="{{item.previous_company_2}}">{{item.previous_company_2}}</td>
+            <td title="{{item.previous_position_3}}">{{item.previous_position_3}}</td>
+            <td title="{{item.previous_company_3}}">{{item.previous_company_3}}</td>
+            <td title="{{item.company_city}}">{{item.company_city}}</td>
+            <td title="{{item.company_state}}">{{item.company_state}}</td>
+            <td title="{{item.company_country}}">{{item.company_country}}</td>
+            <td><a href="{{item.person_angellist_url}}" target="_blank">AngelList</a></td>
+            <td><a href="{{item.person_crunchbase_url}}" target="_blank">Crunchbase</a></td>
+            <td><a href="{{item.person_twitter_url}}" target="_blank">Twitter</a></td>
+            <td><a href="{{item.person_facebook_url}}" target="_blank">Facebook</a></td>
+            <td><a href="{{item.company_linkedin_url}}" target="_blank">Company Linkedin</a></td>
+            <td><a href="{{item.person_image_url}}" target="_blank">Person Image</a></td>
+            <td><a href="{{item.company_logo_url}}" target="_blank">Company Logo</a></td>
             <td class="action-btn-td">
                 <div class="action-btns-container">
                     <svg onclick="resolveConflict('{{item.id}}', '{{item.original_profile.id}}', 'duplicate');" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -115,30 +160,3 @@
         {% endfor %}
     </tbody>
 </table>
-
-<div class="pagination-div" id="pagination-container">
-    <div class="prev-btn first-btn {% if current_page == 1 %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_previous %}onclick="getList('q={{search_params|default_if_none:''}}&page=1')"{% endif %}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#000000"/>
-            <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#000000"/>
-        </svg>
-    </div>
-    <div class="prev-btn {% if current_page == 1 %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_previous %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.previous_page_number }}')"{% endif %}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10.06 12L11 11.06L7.94667 8L11 4.94L10.06 4L6.06 8L10.06 12Z" fill="#000000"/>
-        </svg>
-    </div>
-    <div class="pages" id="pages-container">
-    </div>
-    <div class="rotate-180 next-btn {% if current_page == total_pages %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_next %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.next_page_number }}')"{% endif %}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M10.06 12L11 11.06L7.94667 8L11 4.94L10.06 4L6.06 8L10.06 12Z" fill="#000000"/>
-        </svg>
-    </div>
-    <div class="rotate-180 next-btn last-btn {% if current_page == total_pages %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_next %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.paginator.num_pages }}')"{% endif %}>
-        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#000000"/>
-            <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#000000"/>
-        </svg>
-    </div>
-</div>

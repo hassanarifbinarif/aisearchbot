@@ -1,3 +1,8 @@
+let getFirstPageBtn = document.getElementById('pagination-get-first-record-btn');
+let getPreviousPageBtn = document.getElementById('pagination-get-previous-record-btn');
+let getNextPageBtn = document.getElementById('pagination-get-next-record-btn');
+let getLastPageBtn = document.getElementById('pagination-get-last-record-btn');
+
 const sortOrders = {};
 
 function table_sort(event, index) {
@@ -60,12 +65,12 @@ async function getList(params) {
     let loader = document.querySelector('#table-loader');
     registerUserTableContainer.classList.add('hide');
     loader.classList.remove('hide');
-    let response = await requestAPI(`/get-duplicate-data/${params}/`, null, {}, 'GET');
+    let response = await requestAPI(`/users/get-duplicate-data/${params}/`, null, {}, 'GET');
     response.json().then(function(res) {
         if(res.success) {
             registerUserTableContainer.innerHTML = res.html;
             loader.classList.add('hide');
-            generatePages(res.current_page, res.total_pages);
+            generatePages(res.current_page, res.total_pages, res.has_previous, res.has_next);
             registerUserTableContainer.classList.remove('hide');
             urlParams = params;
         }
@@ -75,7 +80,7 @@ async function getList(params) {
 window.addEventListener('load', getList(urlParams));
 
 
-function generatePages(currentPage, totalPages) {
+function generatePages(currentPage, totalPages, has_previous, has_next) {
     const pagesContainer = document.getElementById('pages-container');
     pagesContainer.innerHTML = '';
 
@@ -110,12 +115,44 @@ function generatePages(currentPage, totalPages) {
             span.setAttribute("onclick", `getList('${pageUrl}')`);
         }
     })
+
+    if (has_previous) {
+        pageUrl = setParams(urlParams, 'page', 1);
+        getFirstPageBtn.setAttribute('onclick', `getList('${pageUrl}')`);
+        getFirstPageBtn.classList.remove('opacity-point-3-5');
+        
+        pageUrl = setParams(urlParams, 'page', parseInt(currentPage) - 1);
+        getPreviousPageBtn.setAttribute('onclick', `getList('${pageUrl}')`);
+        getPreviousPageBtn.classList.remove('opacity-point-3-5');
+    }
+    else {
+        getFirstPageBtn.removeAttribute('onclick');
+        getFirstPageBtn.classList.add('opacity-point-3-5');
+        getPreviousPageBtn.removeAttribute('onclick');
+        getPreviousPageBtn.classList.add('opacity-point-3-5');
+    }
+
+    if (has_next) {
+        pageUrl = setParams(urlParams, 'page', totalPages);
+        getLastPageBtn.setAttribute('onclick', `getList('${pageUrl}')`);
+        getLastPageBtn.classList.remove('opacity-point-3-5');
+
+        pageUrl = setParams(urlParams, 'page', parseInt(currentPage) + 1);
+        getNextPageBtn.setAttribute('onclick', `getList('${pageUrl}')`);
+        getNextPageBtn.classList.remove('opacity-point-3-5');
+    }
+    else {
+        getLastPageBtn.removeAttribute('onclick');
+        getLastPageBtn.classList.add('opacity-point-3-5');
+        getNextPageBtn.removeAttribute('onclick');
+        getNextPageBtn.classList.add('opacity-point-3-5');
+    }
 }
 
 async function resolveConflict(toPreserve, toDelete, type) {
     let data = { toPreserve: toPreserve, toDelete: toDelete, type: type };
     let headers = { "Content-Type": "application/json" };
-    let response = await requestAPI('/resolve-conflict/', JSON.stringify(data), headers, 'POST');
+    let response = await requestAPI('/users/resolve-conflict/', JSON.stringify(data), headers, 'POST');
     response.json().then(function(res) {
         console.log(res);
         getList(urlParams);

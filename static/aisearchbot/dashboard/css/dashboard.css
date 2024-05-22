@@ -93,6 +93,7 @@ table {
 
 #company_table {
     table-layout: fixed;
+    min-width: 7500px;
 }
 
 tr {

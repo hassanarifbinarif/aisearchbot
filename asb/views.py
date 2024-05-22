@@ -444,6 +444,11 @@ def get_candidate_data(request, params):
     context = {}
     context['msg'] = None
     context['success'] = False
+    model = CandidateProfiles
+    field_names = [field.name for field in model._meta.get_fields()]
+    formatted_field_names = [field.replace('_', ' ').capitalize() for field in field_names]
+    formatted_field_names = formatted_field_names[2:]
+    context['field_names'] =  formatted_field_names
     try:
         params_list = params.split('&')
         params_dict = {}
@@ -462,8 +467,10 @@ def get_candidate_data(request, params):
         page_obj = paginator.get_page(page_number)
         context['current_page'] = page_obj.number
         context['total_pages'] = paginator.num_pages
+        context['has_next'] = page_obj.has_next()
+        context['has_previous'] = page_obj.has_previous()
         text_template = loader.get_template('ajax/candidate-table.html')
-        html = text_template.render({'page_obj':page_obj, 'search_params': search_params, 'current_page': context['current_page'], 'total_pages': context['total_pages']})
+        html = text_template.render({'page_obj':page_obj, 'field_names': context['field_names'], 'search_params': search_params, 'current_page': context['current_page'], 'total_pages': context['total_pages']})
         context['html'] = html
         context['user_count'] = users.count()
         context['msg'] = 'Successfully retrieved registered users'
@@ -478,6 +485,11 @@ def get_duplicate_data(request, params):
     context = {}
     context['msg'] = None
     context['success'] = False
+    model = CandidateProfiles
+    field_names = [field.name for field in model._meta.get_fields()]
+    formatted_field_names = [field.replace('_', ' ').capitalize() for field in field_names]
+    formatted_field_names = formatted_field_names[2:]
+    context['field_names'] =  formatted_field_names
     try:
         params_list = params.split('&')
         params_dict = {}
@@ -496,8 +508,10 @@ def get_duplicate_data(request, params):
         page_obj = paginator.get_page(page_number)
         context['current_page'] = page_obj.number
         context['total_pages'] = paginator.num_pages
+        context['has_next'] = page_obj.has_next()
+        context['has_previous'] = page_obj.has_previous()
         text_template = loader.get_template('ajax/manage-conflict-table.html')
-        html = text_template.render({'page_obj':page_obj, 'search_params': search_params, 'current_page': context['current_page'], 'total_pages': context['total_pages']})
+        html = text_template.render({'page_obj':page_obj, 'field_names': context['field_names'], 'search_params': search_params, 'current_page': context['current_page'], 'total_pages': context['total_pages']})
         context['html'] = html
         context['msg'] = 'Successfully retrieved registered users'
         context['success'] = True
