@@ -66,7 +66,7 @@ async function getList(params) {
     user_count = document.querySelector("#user-count")
     registerUserTableContainer.classList.add('hide');
     loader.classList.remove('hide');
-    let response = await requestAPI(`/users/get-candidate-data/${params}/`, null, {}, 'GET');
+    let response = await requestAPI(`/get-candidate-data/${params}/`, null, {}, 'GET');
     response.json().then(function(res) {
         if(res.success) {
             registerUserTableContainer.innerHTML = res.html;
@@ -169,7 +169,7 @@ async function uploadFile(event, inputField, button){
     let formData = new FormData();
     formData.append('data_file', file[0]);
     beforeLoad(button);
-    let response = await requestAPI('/users/import-data/', formData, {}, 'POST');
+    let response = await requestAPI('/import-data/', formData, {}, 'POST');
     response.json().then(function(res) {
         if (!res.success) {
             afterLoad(button, res.message);
@@ -189,7 +189,7 @@ async function uploadFile(event, inputField, button){
 }
 
 async function exportData() {
-    let response = await requestAPI('/users/export-data/', null, {}, 'GET');
+    let response = await requestAPI('/export-data/', null, {}, 'GET');
     response.json().then(function(data) {
         console.log(data);
 

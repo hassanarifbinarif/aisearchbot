@@ -65,7 +65,7 @@ async function getList(params) {
     let loader = document.querySelector('#table-loader');
     registerUserTableContainer.classList.add('hide');
     loader.classList.remove('hide');
-    let response = await requestAPI(`/users/get-duplicate-data/${params}/`, null, {}, 'GET');
+    let response = await requestAPI(`/get-duplicate-data/${params}/`, null, {}, 'GET');
     response.json().then(function(res) {
         if(res.success) {
             registerUserTableContainer.innerHTML = res.html;
@@ -152,7 +152,7 @@ function generatePages(currentPage, totalPages, has_previous, has_next) {
 async function resolveConflict(toPreserve, toDelete, type) {
     let data = { toPreserve: toPreserve, toDelete: toDelete, type: type };
     let headers = { "Content-Type": "application/json" };
-    let response = await requestAPI('/users/resolve-conflict/', JSON.stringify(data), headers, 'POST');
+    let response = await requestAPI('/resolve-conflict/', JSON.stringify(data), headers, 'POST');
     response.json().then(function(res) {
         console.log(res);
         getList(urlParams);
