@@ -1,0 +1,44 @@
+version: '3.2'
+
+services:
+  aisearchbot-server:
+    container_name: "${PROJECT_NAME}_server_${ENV}"
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: bash -c 'python manage.py migrate && python manage.py runserver 0.0.0.0:8000'
+    volumes:
+      - "./:/code"
+    ports:
+      - $WEB_PORT:8000
+    depends_on:
+      - aisearchbot-db
+
+  aisearchbot-db:
+    container_name: "${PROJECT_NAME}_postgres_${ENV}"
+    image: postgis/postgis:14-3.3
+    volumes:
+      - aisearchbot-postgres-data:/var/lib/postgres
+    environment:
+      POSTGRES_DB: "${ASB_DB_NAME}"
+      POSTGRES_USER: "${ASB_DB_USER}"
+      POSTGRES_PASSWORD: "${ASB_DB_PASSWORD}"
+  
+  # nginx:
+  #   container_name: "${PROJECT_NAME}_nginx_${ENV}"
+  #   image: nginx:latest
+  #   volumes:
+  #     - "./:/code/"
+  #     - "./nginx/nginx-$ENV.conf:/etc/nginx/conf.d/default.conf"
+  #     - "/etc/letsencrypt/:/etc/letsencrypt/"
+  #   ports:
+  #     - $NGINX_PORT:80
+  #     - 443:443
+  #   depends_on:
+  #     - aisearchbot-server
+  #   restart: always
+  #   links:
+  #     - aisearchbot-server:aisearchbot-server
+
+volumes:
+  aisearchbot-postgres-data:

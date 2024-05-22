@@ -1,0 +1,187 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block addcss %}
+    <link rel="stylesheet" href="{% static 'aisearchbot/users/css/users.css' %}">
+    <link rel="stylesheet" href="{% static 'aisearchbot/modals/css/attention-required.css' %}" />
+    <link rel="stylesheet" href="{% static 'aisearchbot/modals/css/suspend-user-modal.css' %}" />
+    <link rel="stylesheet" href="{% static 'aisearchbot/modals/css/delete-user-modal.css' %}" />
+{% endblock addcss %}
+
+{% block content %}
+<div class=" d-flex justify-content-between align-items-center">
+    <div class="heading-container">
+        <h1 class="m-0">Users</h1>
+    </div>
+    <div class="search-input-container">
+        <button onclick="location.pathname='/add-user/'" {% if disable_add_user %} disabled {% endif %}>Add User</button>
+    </div>
+
+</div>
+{% if messages %}
+    {% for message in messages %}
+        <div class="alert {{message.tags}} alert-dismissible fade show d-flex index w-25 mt-4 w-100" role="alert">
+            {% if message.tags == 'alert-danger' %}
+            <svg class="me-2" xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="#842029" class="bi bi-exclamation-triangle-fill" viewBox="0 0 16 16">
+                <path d="M8.982 1.566a1.13 1.13 0 0 0-1.96 0L.165 13.233c-.457.778.091 1.767.98 1.767h13.713c.889 0 1.438-.99.98-1.767L8.982 1.566zM8 5c.535 0 .954.462.9.995l-.35 3.507a.552.552 0 0 1-1.1 0L7.1 5.995A.905.905 0 0 1 8 5m.002 6a1 1 0 1 1 0 2 1 1 0 0 1 0-2"/>
+            </svg>
+            {% else %}
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 34 34" fill="none">
+                <path d="M17 0.6875C13.7737 0.6875 10.6198 1.64421 7.93727 3.43665C5.25469 5.22909 3.16388 7.77676 1.92922 10.7575C0.694568 13.7382 0.371526 17.0181 1.00095 20.1824C1.63037 23.3467 3.18398 26.2533 5.46533 28.5347C7.74667 30.816 10.6533 32.3696 13.8176 32.9991C16.9819 33.6285 20.2618 33.3054 23.2425 32.0708C26.2232 30.8361 28.7709 28.7453 30.5634 26.0627C32.3558 23.3802 33.3125 20.2263 33.3125 17C33.3125 12.6737 31.5939 8.52451 28.5347 5.46532C25.4755 2.40613 21.3264 0.6875 17 0.6875ZM25.8594 10.745L15.7006 22.3606C15.6479 22.4206 15.583 22.4687 15.5103 22.5017C15.4376 22.5347 15.3586 22.5518 15.2788 22.5519C15.1551 22.5531 15.0345 22.5136 14.9356 22.4394L8.22501 17.2756C8.16628 17.2306 8.11701 17.1744 8.08 17.1103C8.04298 17.0462 8.01896 16.9754 8.0093 16.902C7.99963 16.8286 8.00452 16.7541 8.02368 16.6826C8.04283 16.6111 8.07589 16.544 8.12094 16.4853C8.16601 16.4266 8.22219 16.3773 8.28629 16.3403C8.3504 16.3033 8.42116 16.2793 8.49455 16.2696C8.56794 16.2599 8.64251 16.2648 8.71401 16.284C8.78551 16.3031 8.85253 16.3362 8.91126 16.3812L15.2 21.2244L25.01 9.97437C25.0588 9.9186 25.118 9.87298 25.1844 9.84011C25.2508 9.80725 25.323 9.78777 25.3969 9.78281C25.4708 9.77785 25.545 9.78749 25.6152 9.81119C25.6853 9.83489 25.7502 9.87218 25.8059 9.92094C25.8617 9.96969 25.9073 10.029 25.9402 10.0953C25.9731 10.1617 25.9925 10.2339 25.9975 10.3078C26.0025 10.3817 25.9928 10.4559 25.9691 10.5261C25.9454 10.5963 25.9081 10.6611 25.8594 10.7169V10.745Z" fill="#28A745"/>
+            </svg>
+            {% endif %}
+            {{ message }}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    {% endfor %}
+{% endif %}
+<div class="container table-responsive p-0 "> 
+    <table class="table border " id='company_table'>
+        <thead class="thead-dark">
+            <tr>
+            <th scope="col" id='state' onclick="table_sort(event, 0)" data-col='user__is_active' >
+                <span class='text-light me-3'>First Name</span>
+                <span>
+                    <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 1L5.29289 0.292893C5.68342 -0.0976313 6.31658 -0.0976313 6.70711 0.292893L6 1ZM7 16C7 16.5523 6.55229 17 6 17C5.44772 17 5 16.5523 5 16L7 16ZM0.292893 5.29289L5.29289 0.292893L6.70711 1.70711L1.70711 6.70711L0.292893 5.29289ZM6.70711 0.292893L11.7071 5.29289L10.2929 6.70711L5.29289 1.70711L6.70711 0.292893ZM7 1L7 16L5 16L5 1L7 1Z" fill="white"/>
+                        <path d="M14 21L13.2929 21.7071C13.6834 22.0976 14.3166 22.0976 14.7071 21.7071L14 21ZM15 6C15 5.44772 14.5523 5 14 5C13.4477 5 13 5.44772 13 6L15 6ZM8.29289 16.7071L13.2929 21.7071L14.7071 20.2929L9.70711 15.2929L8.29289 16.7071ZM14.7071 21.7071L19.7071 16.7071L18.2929 15.2929L13.2929 20.2929L14.7071 21.7071ZM15 21L15 6L13 6L13 21L15 21Z" fill="white"/>
+                    </svg>
+                </span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 1)" data-col='company_name' >
+                <span class='text-light me-3'>Last Name</span>
+                <span>
+                    <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 1L5.29289 0.292893C5.68342 -0.0976313 6.31658 -0.0976313 6.70711 0.292893L6 1ZM7 16C7 16.5523 6.55229 17 6 17C5.44772 17 5 16.5523 5 16L7 16ZM0.292893 5.29289L5.29289 0.292893L6.70711 1.70711L1.70711 6.70711L0.292893 5.29289ZM6.70711 0.292893L11.7071 5.29289L10.2929 6.70711L5.29289 1.70711L6.70711 0.292893ZM7 1L7 16L5 16L5 1L7 1Z" fill="white"/>
+                        <path d="M14 21L13.2929 21.7071C13.6834 22.0976 14.3166 22.0976 14.7071 21.7071L14 21ZM15 6C15 5.44772 14.5523 5 14 5C13.4477 5 13 5.44772 13 6L15 6ZM8.29289 16.7071L13.2929 21.7071L14.7071 20.2929L9.70711 15.2929L8.29289 16.7071ZM14.7071 21.7071L19.7071 16.7071L18.2929 15.2929L13.2929 20.2929L14.7071 21.7071ZM15 21L15 6L13 6L13 21L15 21Z" fill="white"/>
+                    </svg>
+                </span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 2)" data-col='' >
+                <span class='text-light me-3'>Email</span>
+                <span>
+                    <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 1L5.29289 0.292893C5.68342 -0.0976313 6.31658 -0.0976313 6.70711 0.292893L6 1ZM7 16C7 16.5523 6.55229 17 6 17C5.44772 17 5 16.5523 5 16L7 16ZM0.292893 5.29289L5.29289 0.292893L6.70711 1.70711L1.70711 6.70711L0.292893 5.29289ZM6.70711 0.292893L11.7071 5.29289L10.2929 6.70711L5.29289 1.70711L6.70711 0.292893ZM7 1L7 16L5 16L5 1L7 1Z" fill="white"/>
+                        <path d="M14 21L13.2929 21.7071C13.6834 22.0976 14.3166 22.0976 14.7071 21.7071L14 21ZM15 6C15 5.44772 14.5523 5 14 5C13.4477 5 13 5.44772 13 6L15 6ZM8.29289 16.7071L13.2929 21.7071L14.7071 20.2929L9.70711 15.2929L8.29289 16.7071ZM14.7071 21.7071L19.7071 16.7071L18.2929 15.2929L13.2929 20.2929L14.7071 21.7071ZM15 21L15 6L13 6L13 21L15 21Z" fill="white"/>
+                    </svg>
+                </span>
+            </th>
+            <th scope="col" class="order" data-col='' >
+                <span class='text-light me-3'>Actions</span>
+                <span>
+                    <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 1L5.29289 0.292893C5.68342 -0.0976313 6.31658 -0.0976313 6.70711 0.292893L6 1ZM7 16C7 16.5523 6.55229 17 6 17C5.44772 17 5 16.5523 5 16L7 16ZM0.292893 5.29289L5.29289 0.292893L6.70711 1.70711L1.70711 6.70711L0.292893 5.29289ZM6.70711 0.292893L11.7071 5.29289L10.2929 6.70711L5.29289 1.70711L6.70711 0.292893ZM7 1L7 16L5 16L5 1L7 1Z" fill="white"/>
+                        <path d="M14 21L13.2929 21.7071C13.6834 22.0976 14.3166 22.0976 14.7071 21.7071L14 21ZM15 6C15 5.44772 14.5523 5 14 5C13.4477 5 13 5.44772 13 6L15 6ZM8.29289 16.7071L13.2929 21.7071L14.7071 20.2929L9.70711 15.2929L8.29289 16.7071ZM14.7071 21.7071L19.7071 16.7071L18.2929 15.2929L13.2929 20.2929L14.7071 21.7071ZM15 21L15 6L13 6L13 21L15 21Z" fill="white"/>
+                    </svg>
+                </span>
+            </th>
+            
+            
+            </tr>
+        </thead>
+        <tbody> 
+            {% for user in users %}
+            <tr data-pk="{{ user.id }}" data-state="True">
+                <td>{{user.user.first_name}}</td>
+                <td>{{user.user.last_name}}</td>
+                <td>{{user.user.email}}</td>
+                <td class="action-btn-td">
+                    <div class="action-btns-container">
+                        {% if user.user.is_active %}
+                            <svg onclick="suspendUser({{user.user.id}})"  data-bs-toggle="modal" data-bs-target="#addUser"  width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1" width="38" height="38" rx="4" stroke="#006DEF" stroke-width="2"/>
+                                <path d="M20 20C22.7614 20 25 17.7614 25 15C25 12.2386 22.7614 10 20 10C17.2386 10 15 12.2386 15 15C15 17.7614 17.2386 20 20 20Z" stroke="#006DEF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11.4099 30C11.4099 26.13 15.2599 23 19.9999 23C20.9599 23 21.8899 23.13 22.7599 23.37" stroke="#006DEF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M30 26C30 26.32 29.96 26.63 29.88 26.93C29.79 27.33 29.63 27.72 29.42 28.06C28.73 29.22 27.46 30 26 30C24.97 30 24.04 29.61 23.34 28.97C23.04 28.71 22.78 28.4 22.58 28.06C22.21 27.46 22 26.75 22 26C22 24.92 22.43 23.93 23.13 23.21C23.86 22.46 24.88 22 26 22C27.18 22 28.25 22.51 28.97 23.33C29.61 24.04 30 24.98 30 26Z" stroke="#006DEF" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M27.49 25.98H24.51" stroke="#006DEF" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        {% else %}
+                            <svg onclick="activateUser({{user.user.id}})" data-bs-toggle="modal" data-bs-target="#activateuser" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="1" y="1" width="38" height="38" rx="4" stroke="#006DEF" stroke-width="2"/>
+                                <path d="M20 20C22.7614 20 25 17.7614 25 15C25 12.2386 22.7614 10 20 10C17.2386 10 15 12.2386 15 15C15 17.7614 17.2386 20 20 20Z" stroke="#006DEF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11.4099 30C11.4099 26.13 15.2599 23 19.9999 23C20.9599 23 21.8899 23.13 22.7599 23.37" stroke="#006DEF" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M30 26C30 26.32 29.96 26.63 29.88 26.93C29.79 27.33 29.63 27.72 29.42 28.06C28.73 29.22 27.46 30 26 30C24.97 30 24.04 29.61 23.34 28.97C23.04 28.71 22.78 28.4 22.58 28.06C22.21 27.46 22 26.75 22 26C22 24.92 22.43 23.93 23.13 23.21C23.86 22.46 24.88 22 26 22C27.18 22 28.25 22.51 28.97 23.33C29.61 24.04 30 24.98 30 26Z" stroke="#006DEF" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M27.49 25.98H24.51" stroke="#006DEF" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M25.9797 24.49L26.0204 27.4697" stroke="#006DEF" stroke-width="1.5" stroke-miterlimit="10" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>                            
+                        {% endif %}                            
+                            <svg onclick="deleteUser({{user.user.id}})" data-bs-toggle="modal" data-bs-target="#deleteuser" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect width="40" height="40" rx="4" fill="#FF0000"/>
+                                <path d="M27.8483 17.2876C27.8483 17.2876 27.2665 24.5037 26.929 27.5433C26.7683 28.9951 25.8715 29.8458 24.4026 29.8726C21.6072 29.923 18.8087 29.9262 16.0144 29.8672C14.6012 29.8383 13.7194 28.9769 13.5619 27.5508C13.2222 24.4844 12.6437 17.2876 12.6437 17.2876" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M29.3304 13.8287H11.1611" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M25.8294 13.8285C24.9883 13.8285 24.264 13.2339 24.099 12.41L23.8387 11.1071C23.6779 10.506 23.1337 10.0903 22.5133 10.0903H17.9779C17.3576 10.0903 16.8133 10.506 16.6526 11.1071L16.3922 12.41C16.2272 13.2339 15.5029 13.8285 14.6619 13.8285" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>                                                                                    
+                    </div>
+                </td>
+            </tr>
+        {% endfor %}                              
+        </tbody>
+    </table>
+</div>
+
+<div class="pagination-container">
+    {% if users.has_previous %}
+        <a class="text-decoration-none pagination-svg" href="?page=1">
+            <div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#CCCCCC"/>
+                    <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#CCCCCC"/>
+                </svg>
+            </div>
+        </a>
+        <a class="text-decoration-none  pagination-svg" href="?page={{ users.previous_page_number }}">
+            <div>
+                <svg width="5" height="8" viewBox="0 0 5 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4.06 8L5 7.06L1.94667 4L5 0.94L4.06 8.21774e-08L0.0599996 4L4.06 8Z" fill="#CCCCCC"/>
+                </svg>
+            </div>
+        </a>
+    {% endif %}
+    
+    {% if users.paginator.num_pages > 1 %}
+        
+        {% for num in users.paginator.page_range %}
+            {% if num == users.number %}
+                <div class="active">
+                    <span style="color:inherit;">{{ num }}</span>
+                </div>
+            {% elif num > users.number|add:'-3' and num < users.number|add:'3' %}
+                <div>
+                    <a class="text-decoration-none w-100 h-100 d-flex justify-content-center align-items-center" href="?page={{ num }}">{{ num }}</a>
+                </div>
+            {% endif %}
+        {% endfor %}
+
+        {% if users.paginator.num_pages > users.number|add:'3' %}
+            <div>
+                <span>...</span>
+            </div>
+        {% endif %}
+
+    {% endif %}
+    
+    {% if users.has_next %}
+        <a class="text-decoration-none  pagination-svg" href="?page={{ users.next_page_number }}">
+            <div>
+                <svg width="5" height="8" viewBox="0 0 5 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M0.94 0L0 0.94L3.05333 4L0 7.06L0.94 8L4.94 4L0.94 0Z" fill="black"/>
+                </svg>
+            </div>
+        </a>
+        <a class="text-decoration-none  pagination-svg" href="?page={{ users.paginator.num_pages }}">
+            <div>
+                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M4.27301 4L3.33301 4.94L6.38634 8L3.33301 11.06L4.27301 12L8.27301 8L4.27301 4Z" fill="black"/>
+                    <path d="M8.66656 4L7.72656 4.94L10.7799 8L7.72656 11.06L8.66656 12L12.6666 8L8.66656 4Z" fill="black"/>
+                </svg>
+            </div>
+        </a>
+    {% endif %}
+</div>
+
+{% include 'modals/suspend-user-modal.html' %}
+{% include 'modals/activate-user-modal.html' %}
+{% include 'modals/delete-user-modal.html' %}
+{% endblock content %}
+{% block addscript %}
+    <script src="{% static 'aisearchbot/users/js/users.js' %}"></script>
+{% endblock addscript %}

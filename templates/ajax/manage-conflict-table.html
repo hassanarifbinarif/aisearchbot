@@ -1,0 +1,144 @@
+{% load static %}
+{% load custom_tags %}
+
+<table class="table border " id='company_table'>
+    <thead class="thead-dark">
+        <tr>
+            <th scope="col" id='state' onclick="table_sort(event, 0)">
+                <span class='text-light me-1'>Full Name</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 1)">
+                <span class='text-light me-1'>Company Name</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 2)">
+                <span class='text-light me-1'>Current Position</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 3)">
+                <span class='text-light me-1'>Email</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 4)">
+                <span class='text-light me-1'>Phone</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 5)">
+                <span class='text-light me-1'>City</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 6)">
+                <span class='text-light me-1'>LinkedIn</span>
+            </th>
+            <th scope="col" class="order" onclick="table_sort(event, 7)">
+                <span class='text-light me-1'>Skills</span>
+            </th>
+            <th scope="col" class="order">
+                <span class='text-light me-1'>Resolve</span>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for item in page_obj %}
+        <tr class="spacer"></tr>
+        <tr class="group-start">
+            <td title="{{item.original_profile.full_name}}">{{item.original_profile.full_name}}</td>
+            <td title="{{item.original_profile.company_name}}">{{item.original_profile.company_name}}</td>
+            <td title="{{item.original_profile.current_position}}">{{item.original_profile.current_position}}</td>
+            <td title="{{item.original_profile.email1}}">{{item.original_profile.email1}}</td>
+            <td title="{{item.original_profile.phone1}}">{{item.original_profile.phone1}}</td>
+            <td title="{{item.original_profile.person_city}}">{{item.original_profile.person_city}}</td>
+            <td><a href="{{item.original_profile.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
+            <td class="skills-row">
+                <div class="skills-cotainer">
+                    {% for skills in item.original_profile.person_skills|values_from_comma_separated_string %}
+                    <span>{{skills}}</span>
+                    {% endfor %}
+                </div>
+            </td>
+            <td class="action-btn-td">
+                <div class="action-btns-container">
+                    <svg onclick="resolveConflict('{{item.original_profile.id}}', '{{item.id}}', 'original');" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="4" fill="#00BF58"/>
+                        <path d="M28 14L17 25L12 20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="hide" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="1" y="1" width="38" height="38" rx="3" stroke="#006DEF" stroke-width="2"/>
+                        <path opacity="0.4" d="M21.7941 28.3373H28.5253" stroke="#006DEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M20.9025 12.5646C21.6804 11.5735 22.9376 11.6252 23.9298 12.4031L25.397 13.5537C26.3892 14.3316 26.7407 15.5381 25.9628 16.5314L17.2133 27.6939C16.9209 28.0676 16.4744 28.2882 15.9994 28.2935L12.6248 28.3367L11.8606 25.0487C11.7529 24.5874 11.8606 24.1019 12.153 23.7271L20.9025 12.5646Z" stroke="#006DEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path opacity="0.4" d="M19.2639 14.6553L24.3243 18.6221" stroke="#006DEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="hide" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="4" fill="#FF0000"/>
+                        <path d="M27.8483 17.2876C27.8483 17.2876 27.2665 24.5037 26.929 27.5433C26.7683 28.9951 25.8715 29.8458 24.4026 29.8726C21.6072 29.923 18.8087 29.9262 16.0144 29.8672C14.6012 29.8383 13.7194 28.9769 13.5619 27.5508C13.2222 24.4844 12.6437 17.2876 12.6437 17.2876" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M29.3304 13.8287H11.1611" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M25.8294 13.8285C24.9883 13.8285 24.264 13.2339 24.099 12.41L23.8387 11.1071C23.6779 10.506 23.1337 10.0903 22.5133 10.0903H17.9779C17.3576 10.0903 16.8133 10.506 16.6526 11.1071L16.3922 12.41C16.2272 13.2339 15.5029 13.8285 14.6619 13.8285" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>                                                                                    
+                </div>
+            </td>
+        </tr>
+        <tr class="group-end">
+            <td title="{{item.full_name}}">{{item.full_name}}</td>
+            <td title="{{item.company_name}}">{{item.company_name}}</td>
+            <td title="{{item.current_position}}">{{item.current_position}}</td>
+            <td title="{{item.email1}}">{{item.email1}}</td>
+            <td title="{{item.phone1}}">{{item.phone1}}</td>
+            <td title="{{item.person_city}}">{{item.person_city}}</td>
+            <td><a href="{{item.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
+            <td class="skills-row">
+                <div class="skills-cotainer">
+                    {% for skills in item.person_skills|values_from_comma_separated_string %}
+                    <span>{{skills}}</span>
+                    {% endfor %}
+                </div>
+            </td>
+            <td class="action-btn-td">
+                <div class="action-btns-container">
+                    <svg onclick="resolveConflict('{{item.id}}', '{{item.original_profile.id}}', 'duplicate');" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="4" fill="#00BF58"/>
+                        <path d="M28 14L17 25L12 20" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="hide" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="1" y="1" width="38" height="38" rx="3" stroke="#006DEF" stroke-width="2"/>
+                        <path opacity="0.4" d="M21.7941 28.3373H28.5253" stroke="#006DEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M20.9025 12.5646C21.6804 11.5735 22.9376 11.6252 23.9298 12.4031L25.397 13.5537C26.3892 14.3316 26.7407 15.5381 25.9628 16.5314L17.2133 27.6939C16.9209 28.0676 16.4744 28.2882 15.9994 28.2935L12.6248 28.3367L11.8606 25.0487C11.7529 24.5874 11.8606 24.1019 12.153 23.7271L20.9025 12.5646Z" stroke="#006DEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path opacity="0.4" d="M19.2639 14.6553L24.3243 18.6221" stroke="#006DEF" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="hide" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="4" fill="#FF0000"/>
+                        <path d="M27.8483 17.2876C27.8483 17.2876 27.2665 24.5037 26.929 27.5433C26.7683 28.9951 25.8715 29.8458 24.4026 29.8726C21.6072 29.923 18.8087 29.9262 16.0144 29.8672C14.6012 29.8383 13.7194 28.9769 13.5619 27.5508C13.2222 24.4844 12.6437 17.2876 12.6437 17.2876" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M29.3304 13.8287H11.1611" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M25.8294 13.8285C24.9883 13.8285 24.264 13.2339 24.099 12.41L23.8387 11.1071C23.6779 10.506 23.1337 10.0903 22.5133 10.0903H17.9779C17.3576 10.0903 16.8133 10.506 16.6526 11.1071L16.3922 12.41C16.2272 13.2339 15.5029 13.8285 14.6619 13.8285" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>                                                                                    
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="9" class="no-record-row">No Record Available</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination-div" id="pagination-container">
+    <div class="prev-btn first-btn {% if current_page == 1 %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_previous %}onclick="getList('q={{search_params|default_if_none:''}}&page=1')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#000000"/>
+            <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#000000"/>
+        </svg>
+    </div>
+    <div class="prev-btn {% if current_page == 1 %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_previous %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.previous_page_number }}')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.06 12L11 11.06L7.94667 8L11 4.94L10.06 4L6.06 8L10.06 12Z" fill="#000000"/>
+        </svg>
+    </div>
+    <div class="pages" id="pages-container">
+    </div>
+    <div class="rotate-180 next-btn {% if current_page == total_pages %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_next %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.next_page_number }}')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.06 12L11 11.06L7.94667 8L11 4.94L10.06 4L6.06 8L10.06 12Z" fill="#000000"/>
+        </svg>
+    </div>
+    <div class="rotate-180 next-btn last-btn {% if current_page == total_pages %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_next %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.paginator.num_pages }}')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#000000"/>
+            <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#000000"/>
+        </svg>
+    </div>
+</div>

@@ -1,0 +1,50 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block addcss %}
+    <link rel="stylesheet" href="{% static 'aisearchbot/modals/css/attention-required.css' %}" />
+{% endblock addcss %}
+{% block content %}
+
+<div class=" d-flex justify-content-between align-items-center">
+    <div class="heaing-container position-relative">
+        <h1>Listing</h1><small id="user-count" class="position-absolute"></small>
+    </div>
+    <div class="search-action-btn-container">
+        <form onsubmit="searchForm(event);">
+            <div class="search-input-container">
+                <input class="search" type="input" name="search" id="search" placeholder="Search">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.4822 18.9645C15.6146 18.9645 18.9645 15.6146 18.9645 11.4822C18.9645 7.34992 15.6146 4 11.4822 4C7.34992 4 4 7.34992 4 11.4822C4 15.6146 7.34992 18.9645 11.4822 18.9645Z" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16.6855 17.0742L19.6188 20" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </form>
+        <div class="import-export-btns-container">
+            <button onclick="location.pathname = `{% url 'export_file_data' %}`" class="import-export-btns">Export</button>
+            <!-- <a href="{% url 'export_file_data' %}">export data</a> -->
+            <input type="file" onchange="uploadFile(event, this, this.nextElementSibling);" name="excelfile" id="excelfile"  accept=".csv, .xlsx, .xls">
+            <label for="excelfile" id='importfile' class="cursor-pointer import-export-btns">
+                <span class="spinner-border spinner-border-md hide" role="status" aria-hidden="true"></span>
+                <span class="btn-text">Import</span>
+            </label>
+        </div>
+    </div>
+</div>
+
+<div class="container table-responsive p-0 ">
+    <div class="w-100 h-100 d-flex justify-content-center align-items-center pt-2 pb-2" id="table-loader">
+        <span class="spinner-border spinner-border-md" style="color: #006DEF;" role="status" aria-hidden="true">
+        </span>
+    </div>
+    <div id="table-container-div" class="hide">
+        {% include '../ajax/candidate-table.html' %}
+    </div>
+</div>
+
+
+{% include 'modals/attention-required-modal.html' %}
+
+{% endblock content %}
+{% block addscript %}
+<script src="{% static 'aisearchbot/dashboard/js/dashboard.js' %}"></script>
+{% endblock addscript %}

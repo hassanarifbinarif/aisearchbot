@@ -1,0 +1,88 @@
+{% load static %}
+
+<table class="order-details-table" id="saved-search-table">
+    <thead>
+        <th>
+            <div>
+                <span>Current Position</span>
+            </div>
+        </th>
+        <th>
+            <div>
+                <span>Location</span>
+            </div>
+        </th>
+        <th>
+            <div>
+                <span>Search Via</span>
+            </div>
+        </th>
+        <th>
+            <div>
+                <span>Actions</span>
+            </div>
+        </th>
+    </thead>
+    <tbody>
+        {% for item in page_obj %}
+        <tr>
+            <td>
+                <div><span>{{item.keywords}}</span></div>
+            </td>
+            <td>
+                <div><span>{{item.location}}</span></div>
+            </td>
+            <td>
+                <div><span>{{item.search_via}}</span></div>
+            </td>
+            <td>
+                <div class="actions">
+                    <svg class="hide" width="41" height="40" viewBox="0 0 41 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="1.375" y="1" width="38" height="38" rx="4" stroke="#7C00F4" stroke-width="2"/>
+                        <path opacity="0.4" d="M22.1689 28.3373H28.9002" stroke="#7C00F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path fill-rule="evenodd" clip-rule="evenodd" d="M21.2771 12.5646C22.055 11.5735 23.3122 11.6252 24.3044 12.4031L25.7716 13.5537C26.7639 14.3316 27.1154 15.5381 26.3374 16.5314L17.5879 27.6939C17.2955 28.0676 16.849 28.2882 16.374 28.2935L12.9994 28.3367L12.2352 25.0487C12.1275 24.5874 12.2352 24.1019 12.5276 23.7271L21.2771 12.5646Z" stroke="#7C00F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path opacity="0.4" d="M19.6387 14.6553L24.699 18.6221" stroke="#7C00F4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <svg class="cursor-pointer" onclick="openDeleteSearchModal('delsearchModal', '{{item.id}}', 'saved')" width="41" height="40" viewBox="0 0 41 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="0.375" width="40" height="40" rx="5" fill="#FF0000"/>
+                        <path d="M28.2232 17.2876C28.2232 17.2876 27.6414 24.5037 27.3039 27.5433C27.1432 28.9951 26.2464 29.8458 24.7775 29.8726C21.9821 29.923 19.1836 29.9262 16.3893 29.8672C14.9761 29.8383 14.0943 28.9769 13.9368 27.5508C13.5971 24.4844 13.0186 17.2876 13.0186 17.2876" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M29.7054 13.8287H11.5361" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M26.2046 13.8285C25.3635 13.8285 24.6393 13.2339 24.4743 12.41L24.2139 11.1071C24.0532 10.506 23.5089 10.0903 22.8885 10.0903H18.3532C17.7328 10.0903 17.1885 10.506 17.0278 11.1071L16.7675 12.41C16.6025 13.2339 15.8782 13.8285 15.0371 13.8285" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4" class="no-record-row">No Record Available</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div class="pagination-div" id="pagination-container">
+    <div class="prev-btn first-btn {% if current_page == 1 %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_previous %}onclick="getList('q={{search_params|default_if_none:''}}&page=1')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#000000"/>
+            <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#000000"/>
+        </svg>
+    </div>
+    <div class="prev-btn {% if current_page == 1 %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_previous %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.previous_page_number }}')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.06 12L11 11.06L7.94667 8L11 4.94L10.06 4L6.06 8L10.06 12Z" fill="#000000"/>
+        </svg>
+    </div>
+    <div class="pages" id="pages-container">
+    </div>
+    <div class="rotate-180 next-btn {% if current_page == total_pages %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_next %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.next_page_number }}')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M10.06 12L11 11.06L7.94667 8L11 4.94L10.06 4L6.06 8L10.06 12Z" fill="#000000"/>
+        </svg>
+    </div>
+    <div class="rotate-180 next-btn last-btn {% if current_page == total_pages %}opacity-point-3-5{% else %}cursor-pointer{% endif %}" {% if page_obj.has_next %}onclick="getList('q={{search_params|default_if_none:''}}&page={{ page_obj.paginator.num_pages }}')"{% endif %}>
+        <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M11.727 12L12.667 11.06L9.61366 8L12.667 4.94L11.727 4L7.72699 8L11.727 12Z" fill="#000000"/>
+            <path d="M7.33344 12L8.27344 11.06L5.2201 8L8.27344 4.94L7.33344 4L3.33344 8L7.33344 12Z" fill="#000000"/>
+        </svg>
+    </div>
+</div>

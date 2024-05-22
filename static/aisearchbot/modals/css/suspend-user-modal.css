@@ -1,0 +1,6 @@
+.modal-footer button{
+    padding: 14px 44px !important;
+}
+.modal-footer button:last-of-type {
+    background: var(--primary-color) !important;
+}

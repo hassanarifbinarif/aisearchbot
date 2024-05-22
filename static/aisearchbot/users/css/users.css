@@ -1,0 +1,36 @@
+.heading-container h1{
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 54.72px;
+    letter-spacing: 0.03em;
+    text-align: center;
+}
+.search-input-container button{
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 20.8px;
+    text-align: center;
+    padding: 12px 41px;
+    box-shadow: 0px 0px 10px 0px #1B203240;
+    background: #006DEF;
+    border-radius: 8px;
+    border: none;
+    color: white;
+}
+.pagination-svg{
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFFFFF;
+    border: 1px solid #7C00F41A;
+    border-radius: 5px;
+    color: #333333;
+    font-size: .813;
+    font-weight: 600;
+    line-height: 19.5px;
+    width: 32px;
+    height: 32px;
+}
+button:disabled{
+    opacity: .5;
+}

@@ -1,0 +1,235 @@
+.main-content{
+    padding: 30px;
+    position: absolute;
+    bottom: 0px;
+    top: 70px;
+    width: 100%;
+}
+
+.heading-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 20px;
+}
+.back-btn {
+    width: 50px;
+    height: 50px;
+    border-radius: 4px;
+    flex-shrink: 0;
+    border: 3px solid var(--primary-color);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.back-btn:hover {
+    background: var(--primary-color);
+}
+
+.back-btn:hover svg path {
+    stroke: #FFFFFF;
+}
+
+.heading-container h1{
+    font-size: 32px;
+    font-weight: 700;
+    line-height: 36px;
+    letter-spacing: 0.03em;
+    text-align: left;
+}
+.search-action-btn-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 112px;
+    width: 33%;
+}
+.search-input-container{
+    position: relative;
+}
+.search-input-container svg{
+    position: absolute;
+    left: 10px;
+    top: 17px;
+}
+.search-input-container input:focus{
+    border: 1px solid var(--primary-color);
+    outline: none;
+}
+.search{
+    max-width: 412px;
+    width: 100%;
+    height: 55px;
+    padding-left: 40px;
+    border-radius: 10px;
+    background: #FFFFFF;
+    box-shadow: 0px 0px 5px 2px #006DEF1A;
+    border: none;
+}
+
+.import-export-btns-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+}
+.import-export-btns-container button{
+    width: 230px;
+    height: 55px;
+    border-radius: 10px;
+    background: var(--primary-color);
+    color: white;
+    border: none; 
+    box-shadow: 0px 0px 10px 0px #1B203240;
+
+}
+
+.table-responsive{
+    margin-top: 20px;
+}
+#company_table {
+    border: none!important;
+}
+table {
+    border-top-left-radius:  10px !important;
+    border-top-right-radius:  10px !important;
+    box-shadow: 0px 0px 5px 2px #640EF11A;
+    background: #FFFFFF;
+    border: none!important;
+}
+tr{
+    height: 60px;
+    text-align: center;
+    vertical-align: middle;
+    /* box-shadow: 0px 0px 5px 2px rgba(100, 14, 241, 0.1); */
+    cursor:pointer;
+}
+    
+.thead-dark{
+    background-color: rgba(7, 12, 41, 1);
+}
+th:first-of-type {
+    border-top-left-radius: 10px;
+}
+th:last-of-type {
+    border-top-right-radius: 10px;
+}
+thead tr > th{
+    color: white;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 27px;
+    padding-left: 0px!important;
+    padding-right: 0px!important;
+}
+tr td{
+    text-align: center;
+    font-size: 16px;
+    font-weight: 400;
+    line-height: 24px;
+    text-align: center;
+    border-bottom-width: 0px!important;
+}
+td a{
+    color: var(--primary-color);
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 24px;
+    text-align: center;
+
+}
+.skills-cotainer{
+    display: flex;
+    /* justify-content: center; */
+    align-items: center;
+    gap: 5px;
+}
+.skills-cotainer span{
+    padding: 5px;
+    border-radius: 5px;
+    font-size: 10px;
+    font-weight: 600;
+    line-height: 13px;
+    text-align: center;
+    background: #006DEF1A;
+    color: var(--primary-color);
+}
+
+.action-btn-td{
+    background-color: #F1F4F5 !important;
+}
+
+.action-btns-container{
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 4px;
+}
+
+/* tbody tr:nth-child(4n+1),
+tbody tr:nth-child(4n+2) {
+  border : 2px dashed #FF0000;
+} */
+
+.group-start {
+    border-top: 2px dashed #FF0000;
+    border-left: 2px dashed #FF0000;
+    border-right: 2px dashed #FF0000;
+    /* border-top-left-radius: 8px;
+    border-top-right-radius: 8px; */
+}
+.group-end {
+    border-style: dashed;
+    border-bottom: 2px dashed #FF0000;
+    border-left: 2px dashed #FF0000;
+    border-right: 2px dashed #FF0000;
+    /* border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px; */
+}
+.spacer {
+    height: 10px;
+}
+
+.pagination-container {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 5px;
+    padding-bottom: 40px;
+}
+
+.pagination-container > div {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFFFFF;
+    border: 1px solid #7C00F41A;
+    border-radius: 5px;
+    color: #333333;
+    font-size: .813;
+    font-weight: 600;
+    line-height: 19.5px;
+    width: 32px;
+    height: 32px;
+}
+
+.pagination-container > .active {
+    background: var(--primary-color);
+    border: 1px solid var(--primary-color);
+    color: #FFFFFF;
+}
+
+@media (max-width: 1920px) {
+    thead tr > th{
+        font-size: 15px;
+    }
+    thead tr > th svg{
+        width: 15px;
+        height: 15px;
+    }
+    tr td{
+        font-size: 14px;
+    }
+}

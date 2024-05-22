@@ -1,0 +1,138 @@
+.footer-container {
+    max-width: 100%!important;
+    background: #070C29;
+    padding-top: 60px;
+}
+
+.footer-container footer {
+    padding-left: 2.6%;
+    padding-right: 2.6%;
+}
+
+.footer-header {
+    font-size: 1.625rem;
+    font-weight: 500;
+    line-height: 39px;
+    text-align: left;
+    color: #FFFFFF;
+    margin-bottom: 35px;
+}
+
+footer .nav-item > a {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 24px;
+    text-align: left;
+    color: #FFFFFF;
+}
+
+.footer-container .bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 2.6%;
+    padding-right: 2.6%;
+    margin-top: 70px;
+    padding-bottom: 30px;
+}
+
+.footer-container .bottom-bar span {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 24px;
+    text-align: left;
+    color: #ABAEC7;
+}
+
+.footer-container .bottom-bar .confidential-links {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 766px;
+}
+
+.footer-container .bottom-bar .social-media-links {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.footer-container .bottom-bar .social-media-links > div {
+    width: 36px;
+    height: 36px;
+    background: #FFFFFF;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+
+@media (max-width: 1368px) {
+    .empty-col {
+        width: 12%!important;
+    }
+
+    .content-col {
+        width: 20%!important;
+    }
+
+    .footer-container .bottom-bar .confidential-links {
+        width: 550px;
+    }
+}
+
+
+@media (max-width: 1180px) {
+    .empty-col {
+        display: none;
+    }
+
+    .content-col {
+        width: 24%!important;
+    }
+
+}
+
+
+@media (max-width: 1000px) {
+    .logo-col {
+        flex-shrink: 0!important;
+    }
+
+    .footer-container footer {
+        padding-left: 1%;
+        padding-right: 1%;
+    }
+    
+    .footer-links {
+        margin-top: 10px;
+        width: 100%;
+    }
+
+    .content-col {
+        min-width: 200px;
+    }
+
+    .footer-container .bottom-bar {
+        padding-left: 1%;
+        padding-right: 1%;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}
+
+
+@media (max-width: 800px) {
+    .content-col {
+        margin-top: 20px;
+    }
+}
+
+
+@media (max-width: 480px) {
+    .footer-container .bottom-bar .confidential-links {
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+}

@@ -1,0 +1,337 @@
+.modal-dialog {
+    max-width: unset;
+    width: 514px;
+}
+
+.modal-header {
+    padding: 0!important;
+    border-radius: 15px!important;
+
+}
+
+.modal-body-details{
+    margin-bottom: 31px;
+    margin-top: 31px;
+}
+.modal-content {
+    padding: 30px;
+}
+
+.modal-footer,
+.modal-content {
+    border-radius: 15px!important;
+}
+
+.modal-header {
+    margin-bottom: 20px;
+}
+
+.modal-header > span {
+    font-size: 2.25rem;
+    font-weight: 700;
+    line-height: 61.56px;
+    letter-spacing: 0.03em;
+    text-align: center;
+}
+
+.modal-body {
+    padding: 0px!important;
+}
+
+.modal-body .input-wrapper {
+    margin-bottom: 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    position: relative;
+    width: 100%;
+}
+
+.modal-body .input-wrapper label {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 27px;
+    text-align: left;
+    color: var(--text-field-heading);
+}
+
+.modal-body .input-wrapper > div {
+    display: flex;
+    align-items: center;
+}
+
+.modal-body .input-wrapper > div input {
+    width: 100%;
+    height: 55px;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0px 0px 5px 2px #7C00F41A;
+    padding-left: 44px;
+    padding-right: 10px;
+    line-height: 24px;
+}
+.input-wrapper .show-hide-icon {
+    right: 10px;
+    left: unset !important;
+}
+.modal-body .input-wrapper > div svg {
+    position: absolute;
+    left: 10px;
+    bottom: 17px;
+}
+
+.modal-body .input-wrapper .added-user-role {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    width: 130px;
+    height: 45px;
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+}
+
+.modal-body .input-wrapper .added-user-role.show {
+    display: flex!important;
+}
+
+.modal-body .input-wrapper .added-user-role > span {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 20.8px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.modal-body .input-wrapper .added-user-role > svg {
+    position: static;
+}
+
+.modal-body .profile-image-container {
+    position: relative;
+    /* width: 150px;
+    height: 150px; */
+    flex-shrink: 0;
+}
+
+.modal-body .profile-image-container .profile-image-uploader {
+    width: 100px;
+    height: 100px;
+    position: relative;
+}
+
+.modal-body .profile-image {
+    width: 100%;
+    height: 100%;
+    /* border: 1px solid transparent; */
+    border-radius: 50%;
+    cursor: pointer;
+    object-fit: cover;
+    object-position: center;
+}
+
+.modal-body .edit-btn {
+    width: 35px;
+    height: 35px;
+    pointer-events: all;
+    position: absolute;
+    /* bottom: -36px;
+    right: -50px; */
+    bottom: 5px;
+    right: -10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #FFFFFF;
+    border: 1px solid #7C00F41A;
+    border-radius: 6px;
+    box-shadow: 0px 13px 41px 0px #3B3B3D1B;
+}
+
+.modal-body .edit-btn > svg {
+    position: relative;
+    top: -1px;
+}
+
+.modal-body .added-user-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.modal-body .added-user-wrapper .added-user {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-info > img {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-info > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-info > div > span:first-of-type {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 27px;
+    text-align: left;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-info > div > span:last-of-type {
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 24px;
+    text-align: left;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-role {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    width: 130px;
+    height: 45px;
+    border: 2px solid var(--primary-color);
+    border-radius: 8px;
+}
+
+.modal-body .added-user-wrapper .added-user .added-user-role > span {
+    font-size: 1rem;
+    font-weight: 600;
+    line-height: 20.8px;
+    text-align: center;
+    color: var(--primary-color);
+}
+
+.error-div {
+    text-align: left;
+    /* padding: 0px 30px; */
+    /* margin-top: 5px; */
+}
+
+
+.modal-footer {
+    padding: 0px!important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 43px;
+}
+
+.modal-footer > button {
+    /* width: 172px; */
+    height: 55px;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px 0px #0C47AF4D;
+    color: #FFFFFF;
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 26px;
+    text-align: center;
+    padding: 14px 32px;
+}
+
+.modal-footer > button{
+    background: #FF0000;
+}
+
+/* .modal-footer > button:last-of-type {
+    background: var(--primary-color);
+} */
+
+.modal-footer > button > span {
+    color: #FFFFFF;
+}
+
+
+/* .subscription-currency-dropdown {
+    width: 106px;
+    height: 45px;
+    border-radius: 8px;
+    border: 2px solid #070C29;
+    box-shadow: 0px 0px 5px 2px #7C00F41A;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    cursor: pointer;
+} */
+
+.subscription-currency-dropdown-btn {
+    width: 100%;
+    padding: 0px 7px;
+}
+
+.subscription-currency-dropdown .currency-details {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    cursor: pointer;
+}
+
+.subscription-currency-dropdown .currency-details span:first-of-type {
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 18px;
+    text-align: left;
+    position: relative;
+    /* top: -1px; */
+}
+
+.subscription-currency-dropdown .currency-details span:last-of-type {
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 20.8px;
+}
+
+.subscription-currency-dropdown .subscription-currency-menu {
+    width: 130px;
+    padding: 0px;
+    border: none;
+    min-width: unset;
+    top: 0px!important;
+}
+
+.subscription-currency-dropdown .subscription-currency-menu .dropdown-item {
+    /* width: 103px; */
+    height: 45px;
+    padding: 0px;
+    box-shadow: 0px 0px 5px 2px #7C00F41A;
+    background: #FFFFFF;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding-left: 10px;
+    cursor: pointer;
+    border-radius: 10px;
+}
+
+/* .subscription-currency-dropdown .subscription-currency-menu .dropdown-item:first-of-type {
+    border-radius: 8px 8px 0px 0px;
+}
+
+.subscription-currency-dropdown .subscription-currency-menu .dropdown-item:last-of-type {
+    border-radius: 0px 0px 8px 8px;
+} */
+
+.subscription-currency-dropdown .subscription-currency-menu .dropdown-item span {
+    font-size: 1rem;
+    font-weight: 500;
+    line-height: 20.8px;
+    text-align: center;
+}

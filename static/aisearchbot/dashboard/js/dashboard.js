@@ -1,0 +1,186 @@
+const sortOrders = {};
+
+function table_sort(event, index) {
+    const arrows = event.target.closest('th').querySelectorAll('path');
+    table = document.getElementById('company_table')
+    const currentOrder = sortOrders[index] || 'asc';
+    const arr = Array.from(table.querySelectorAll('tbody tr'));
+    arr.sort((a, b) => {
+        const a_val = a.children[index].innerText
+        const b_val = b.children[index].innerText
+        return currentOrder === 'asc' ? a_val.localeCompare(b_val) : b_val.localeCompare(a_val)
+    })
+    arr.forEach(elem => {
+        table.querySelector("tbody").appendChild(elem)
+    })
+
+    arrows[0].setAttribute('opacity', currentOrder === 'asc' ? '0.2' : '1');
+    arrows[1].setAttribute('opacity', currentOrder === 'asc' ? '1' : '0.2');
+
+    sortOrders[index] = currentOrder === 'asc' ? 'desc' : 'asc';
+}
+
+function table_sort_by_state(event, index) {
+    const arrows = event.target.closest('th').querySelectorAll('path');
+    table = document.getElementById('company_table')
+    const currentOrder = sortOrders[index] || 'asc';
+    const arr = Array.from(table.querySelectorAll('tbody tr'));
+    arr.sort((a, b) => {
+        const a_val = a.getAttribute('data-state')
+        const b_val = b.getAttribute('data-state')
+        return currentOrder === 'asc' ? a_val.localeCompare(b_val) : b_val.localeCompare(a_val)
+    })
+    arr.forEach(elem => {
+        table.querySelector("tbody").appendChild(elem)
+    })
+
+    arrows[0].setAttribute('opacity', currentOrder === 'asc' ? '0.2' : '1');
+    arrows[1].setAttribute('opacity', currentOrder === 'asc' ? '1' : '0.2');
+
+    sortOrders[index] = currentOrder === 'asc' ? 'desc' : 'asc';
+}
+
+
+let urlParams = 'q=&page=';
+
+
+function searchForm(event) {
+    event.preventDefault();
+    let form = event.currentTarget;
+    let formData = new FormData(form);
+    let data = formDataToObject(formData);
+    urlParams = setParams(urlParams, 'q', `${data.search}`);
+    urlParams = setParams(urlParams, 'page', '1');
+    getList(urlParams);
+}
+
+
+async function getList(params) {
+    let registerUserTableContainer = document.getElementById('table-container-div');
+    let loader = document.querySelector('#table-loader');
+    user_count = document.querySelector("#user-count")
+    registerUserTableContainer.classList.add('hide');
+    loader.classList.remove('hide');
+    let response = await requestAPI(`/get-candidate-data/${params}/`, null, {}, 'GET');
+    response.json().then(function(res) {
+        if(res.success) {
+            registerUserTableContainer.innerHTML = res.html;
+            loader.classList.add('hide');
+            user_count.innerText = `(${res.user_count})`;
+            generatePages(res.current_page, res.total_pages);
+            registerUserTableContainer.classList.remove('hide');
+            urlParams = params;
+            
+        }
+    })
+}
+
+window.addEventListener('load', getList(urlParams));
+
+
+function generatePages(currentPage, totalPages) {
+    const pagesContainer = document.getElementById('pages-container');
+    pagesContainer.innerHTML = '';
+
+    let startPage = Math.max(1, currentPage - 1);
+    let endPage = Math.min(totalPages, startPage + 2);
+
+    if (endPage - startPage < 2) {
+        startPage = Math.max(1, endPage - 2);
+    }
+
+    if (startPage > 1) {
+        pagesContainer.innerHTML += '<span class="cursor-pointer">1</span>';
+        if (startPage > 2) {
+            pagesContainer.innerHTML += '<span class="ellipsis-container">...</span>';
+        }
+    }
+
+    for (let i = startPage; i <= endPage; i++) {
+        pagesContainer.innerHTML += `<span${i === currentPage ? ' class="active"' : ' class="cursor-pointer"'}>${i}</span>`;
+    }
+
+    if (endPage < totalPages) {
+        if (endPage < totalPages - 1) {
+            pagesContainer.innerHTML += '<span class="ellipsis-container">...</span>';
+        }
+        pagesContainer.innerHTML += `<span class="cursor-pointer">${totalPages}</span>`;
+    }
+    pagesContainer.querySelectorAll('span').forEach((span) => {
+        if ((!span.classList.contains('active'))  && (!span.classList.contains('ellipsis-container'))) {
+            let page = span.innerText;
+            let pageUrl = setParams(urlParams, 'page', page);
+            span.setAttribute("onclick", `getList('${pageUrl}')`);
+        }
+    })
+}
+
+
+async function uploadFile(event, inputField, button){
+    let buttonText = button.innerText;
+    let file = event.target.files;
+    let formData = new FormData();
+    formData.append('data_file', file[0]);
+    beforeLoad(button);
+    let response = await requestAPI('/import-data/', formData, {}, 'POST');
+    response.json().then(function(res) {
+        if (!res.success) {
+            afterLoad(button, res.message);
+            setTimeout(() => {
+                afterLoad(button, 'Import');    
+            }, 1200)
+        }
+        else {
+            inputField.value = '';
+            getList(urlParams);
+            afterLoad(button, 'Import');
+            if (res.is_duplicate) {
+                document.querySelector('.addUser').click();   
+            }
+        }
+    })
+}
+
+async function exportData() {
+    let response = await requestAPI('/export-data/', null, {}, 'GET');
+    response.json().then(function(data) {
+        console.log(data);
+
+        // var csvContent = "data:text/csv;charset=utf-8,";
+        // csvContent += Object.keys(data[0]).join(",") + "\n";
+        // data.forEach(function(item, index){
+        //     // csvContent += Object.values(item).join(",") + "\n";
+        //     var values = Object.values(item).map(value => {
+        //         // Quote values containing special characters or commas
+        //         if (/[",\n]/.test(value)) {
+        //             return '"' + value.replace(/"/g, '""') + '"';
+        //         } else {
+        //             return value;
+        //         }
+        //     });
+
+        //     csvContent += values.join(",") + "\n";
+        // });
+
+        // const header = Object.keys(data[0]);
+        // console.log(header);
+        // const headerString = "data:text/csv;charset=utf-8," + header.join(',');
+        
+        // const replacer = (key, value) => value ?? '';
+        // const rowItems = data.map((row) =>
+        //     header
+        //     .map((fieldName) => JSON.stringify(row[fieldName], replacer))
+        //     .join(',')
+        // );
+        // // join header and body, and break into separate lines
+        // const csv = [headerString, ...rowItems].join('\r\n');
+
+        // // Create a temporary link and initiate file download
+        // var encodedUri = encodeURI(csv);
+        // var link = document.createElement("a");
+        // link.setAttribute("href", encodedUri);
+        // link.setAttribute("download", "data.csv");
+        // document.body.appendChild(link);
+        // link.click();
+    })
+}

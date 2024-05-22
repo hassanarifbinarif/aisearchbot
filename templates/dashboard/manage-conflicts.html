@@ -1,0 +1,53 @@
+{% extends "dashboard/base.html" %}
+{% load static %}
+{% block addcss %}
+    <link rel="stylesheet" href="{% static 'aisearchbot/dashboard/css/manage-conflicts.css' %}" />
+{% endblock addcss %}
+
+{% block content %}
+<div class=" d-flex justify-content-between align-items-center">
+    <div class="heading-container">
+        <div class="back-btn" onclick="location.pathname = '/dashboard/'">
+            <svg width="12" height="19" viewBox="0 0 12 19" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M9.6263 16.8548L2.29297 9.50065L9.6263 2.14648" stroke="#006DEF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h1 class="m-0">Manage Conflicts</h1>
+    </div>
+    <div class="search-action-btn-container">
+        <form class="w-100" onsubmit="searchForm(event);">
+            <div class="search-input-container">
+                <input class="search" type="input" name="search" id="search" placeholder="Search">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.4822 18.9645C15.6146 18.9645 18.9645 15.6146 18.9645 11.4822C18.9645 7.34992 15.6146 4 11.4822 4C7.34992 4 4 7.34992 4 11.4822C4 15.6146 7.34992 18.9645 11.4822 18.9645Z" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16.6855 17.0742L19.6188 20" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </form>
+    </div>
+    <div class=" visibilty-hidden search-action-btn-container">
+        <form action="" class="w-100">
+            <div class="search-input-container">
+                <input class="search" type="input" name="search" id="search" placeholder="Search">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M11.4822 18.9645C15.6146 18.9645 18.9645 15.6146 18.9645 11.4822C18.9645 7.34992 15.6146 4 11.4822 4C7.34992 4 4 7.34992 4 11.4822C4 15.6146 7.34992 18.9645 11.4822 18.9645Z" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M16.6855 17.0742L19.6188 20" stroke="#5D5D5D" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="container table-responsive p-0 "> 
+    <div class="w-100 h-100 d-flex justify-content-center align-items-center pt-2 pb-2" id="table-loader">
+        <span class="spinner-border spinner-border-md" style="color: #006DEF;" role="status" aria-hidden="true">
+        </span>
+    </div>
+    <div id="table-container-div" class="hide">
+        {% include '../ajax/manage-conflict-table.html' %}
+    </div>
+</div>
+{% endblock content %}
+{% block addscript %}
+<script src="{% static 'aisearchbot/dashboard/js/manageConflict.js' %}"></script>
+{% endblock addscript %}
