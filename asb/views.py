@@ -242,7 +242,7 @@ def add_user(request):
             form_instance.is_superuser = True
             form_instance.save()
             user = SharedUsers.objects.create(user=form_instance, belongs_to=request.user)
-            url = f'{settings.FRONTEND_URL}/aisearchbot/login/'
+            url = f'{settings.FRONTEND_URL}/login/'
             response = send_account_credentials_email(email, password, url)
             if response:
                 messages.success(request, 'New user successfully added.')

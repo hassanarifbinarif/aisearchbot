@@ -36,7 +36,7 @@
                 </div>
             </a>
             {% if not request.user.shared_user_profile %}
-            <a class="sidebar-link {% if active_sidebar == 'users' %}active{% endif %}" href="{% url "users" %}">
+            <a class="sidebar-link {% if active_sidebar == 'users' %}active{% endif %}" href="{% url 'users' %}">
                 <div class="link-content">
                     <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M8.14498 13.126C9.98505 13.126 11.482 11.6089 11.482 9.74428C11.482 7.87968 9.98505 6.36279 8.14498 6.36279C6.30491 6.36279 4.80798 7.87968 4.80798 9.74428C4.80798 11.6089 6.30491 13.126 8.14498 13.126ZM8.14498 7.58361C9.32072 7.58361 10.2772 8.55287 10.2772 9.74428C10.2772 10.9359 9.32072 11.9052 8.14498 11.9052C6.96925 11.9052 6.01274 10.9359 6.01274 9.74428C6.01274 8.55287 6.96925 7.58361 8.14498 7.58361Z" fill="#ABAEC7" stroke="#ABAEC7" stroke-width="0.5"/>

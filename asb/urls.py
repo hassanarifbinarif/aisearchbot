@@ -11,7 +11,7 @@ urlpatterns = [
     path('reset-password/', views.reset_password, name='super_admin_login_reset_password'),
     
     #dashboard
-    path('dashboard/', views.dashboard, name='super_admin_login_dashboard'),
+    path('', views.dashboard, name='super_admin_login_dashboard'),
     path('manage-conflicts/', views.manage_conflicts, name='manage-conflicts'),
     
     #accounts
