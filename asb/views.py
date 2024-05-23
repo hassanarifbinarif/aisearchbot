@@ -71,6 +71,7 @@ def send_otp(request):
                     request.session['email'] = email
                     return redirect('super_admin_login_verify_code')
         except Exception as e:
+            print(e)
             messages.error(request, 'Something bad happened')
     return render(request, 'abs-authentication/forgot-password.html', context)
 

@@ -36,7 +36,7 @@ def send_verification_code_email(email: str):
     update_code = OTP.objects.update_or_create(email=email, defaults=update_fields)
     if update_code:
         try:
-            email_subject = 'Flunter Verification Code.'
+            email_subject = 'ASB Verification Code.'
             text_content = email_subject
             text_template = get_template('email_templates/verify-code-email.html')
             context_obj = { 'verification_code': secret_key }
@@ -58,7 +58,7 @@ def send_account_credentials_email(email: str, password: str, url: str):
     link= url
     if email and password:
         try:
-            email_subject = 'Flunter Account Credentials.'
+            email_subject = 'ASB Account Credentials.'
             text_content = email_subject
             text_template = get_template('email_templates/account-credentials-email.html')
             context_obj = { 'link': link, 'email': email, 'password': password  }
