@@ -34,3 +34,6 @@
 button:disabled{
     opacity: .5;
 }
+#company_table{
+    min-width: unset;
+}

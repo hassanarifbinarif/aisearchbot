@@ -21,17 +21,17 @@
     <tbody>
         {% for item in page_obj %}
         <tr>
-            <td title="{{item.full_name}}">{{item.full_name}}</td>
-            <td title="{{item.first_name}}">{{item.first_name}}</td>
-            <td title="{{item.last_name}}">{{item.last_name}}</td>
-            <td title="{{item.headline}}">{{item.headline}}</td>
-            <td title="{{item.current_position}}">{{item.current_position}}</td>
-            <td title="{{item.company_name}}">{{item.company_name}}</td>
-            <td title="{{item.person_city}}">{{item.person_city}}</td>
-            <td title="{{item.person_state}}">{{item.person_state}}</td>
-            <td title="{{item.person_country}}">{{item.person_country}}</td>
-            <td title="{{item.person_industry}}">{{item.person_industry}}</td>
-            <td title="{{item.tags}}">{{item.tags}}</td>
+            <td title="{{item.full_name}}">{{item.full_name | default:"--"}}</td>
+            <td title="{{item.first_name}}">{{item.first_name | default:"--"}}</td>
+            <td title="{{item.last_name}}">{{item.last_name | default:"--"}}</td>
+            <td title="{{item.headline}}">{{item.headline | default:"--"}}</td>
+            <td title="{{item.current_position}}">{{item.current_position | default:"--"}}</td>
+            <td title="{{item.company_name}}">{{item.company_name | default:"--"}}</td>
+            <td title="{{item.person_city}}">{{item.person_city | default:"--"}}</td>
+            <td title="{{item.person_state}}">{{item.person_state | default:"--"}}</td>
+            <td title="{{item.person_country}}">{{item.person_country | default:"--"}}</td>
+            <td title="{{item.person_industry}}">{{item.person_industry | default:"--"}}</td>
+            <td title="{{item.tags}}">{{item.tags | default:"--"}}</td>
             <td class="skills-row">
                 <div class="skills-cotainer">
                     {% for skills in item.person_skills|values_from_comma_separated_string %}
@@ -39,31 +39,31 @@
                     {% endfor %}
                 </div>
             </td>
-            <td title="{{item.education_experience}}">{{item.education_experience}}</td>
-            <td><a href="{{item.company_website}}" target="_blank">Company Website</a></td>
-            <td title="{{item.email1}}">{{item.email1}}</td>
-            <td title="{{item.email2}}">{{item.email2}}</td>
-            <td title="{{item.phone1}}">{{item.phone1}}</td>
-            <td title="{{item.phone2}}">{{item.phone2}}</td>
-            <td><a href="{{item.person_linkedin_url}}" target="_blank">LinkedIn</a></td>
-            <td title="{{item.company_size_from}}">{{item.company_size_from}}</td>
-            <td title="{{item.company_size_to}}">{{item.company_size_to}}</td>
-            <td title="{{item.current_position_2}}">{{item.current_position_2}}</td>
-            <td title="{{item.current_company_2}}">{{item.current_company_2}}</td>
-            <td title="{{item.previous_position_2}}">{{item.previous_position_2}}</td>
-            <td title="{{item.previous_company_2}}">{{item.previous_company_2}}</td>
-            <td title="{{item.previous_position_3}}">{{item.previous_position_3}}</td>
-            <td title="{{item.previous_company_3}}">{{item.previous_company_3}}</td>
-            <td title="{{item.company_city}}">{{item.company_city}}</td>
-            <td title="{{item.company_state}}">{{item.company_state}}</td>
-            <td title="{{item.company_country}}">{{item.company_country}}</td>
-            <td><a href="{{item.person_angellist_url}}" target="_blank">AngelList</a></td>
-            <td><a href="{{item.person_crunchbase_url}}" target="_blank">Crunchbase</a></td>
-            <td><a href="{{item.person_twitter_url}}" target="_blank">Twitter</a></td>
-            <td><a href="{{item.person_facebook_url}}" target="_blank">Facebook</a></td>
-            <td><a href="{{item.company_linkedin_url}}" target="_blank">Company Linkedin</a></td>
-            <td><a href="{{item.person_image_url}}" target="_blank">Person Image</a></td>
-            <td><a href="{{item.company_logo_url}}" target="_blank">Company Logo</a></td>
+            <td title="{{item.education_experience}}">{{item.education_experience | default:"--"}}</td>
+            <td><a {% if not item.company_website %}class="opacity-point-2" href="#" title="no url found."  {% else %} href="{{item.company_website}}" target="_blank"{% endif %}>Company Website</a></td>
+            <td title="{{item.email1}}">{{item.email1 | default:"--"}}</td>
+            <td title="{{item.email2}}">{{item.email2 | default:"--"}}</td>
+            <td title="{{item.phone1}}">{{item.phone1 | default:"--"}}</td>
+            <td title="{{item.phone2}}">{{item.phone2 | default:"--"}}</td>
+            <td><a {% if not item.person_linkedin_url %}class="opacity-point-2" href="#" title="no url found."  {% else %} href="{{item.person_linkedin_url}}" target="_blank"{% endif %} >LinkedIn</a></td>
+            <td title="{{item.company_size_from}}">{{item.company_size_from | default:"--"}}</td>
+            <td title="{{item.company_size_to}}">{{item.company_size_to | default:"--"}}</td>
+            <td title="{{item.current_position_2}}">{{item.current_position_2 | default:"--"}}</td>
+            <td title="{{item.current_company_2}}">{{item.current_company_2 | default:"--"}}</td>
+            <td title="{{item.previous_position_2}}">{{item.previous_position_2 | default:"--"}}</td>
+            <td title="{{item.previous_company_2}}">{{item.previous_company_2 | default:"--"}}</td>
+            <td title="{{item.previous_position_3}}">{{item.previous_position_3 | default:"--"}}</td>
+            <td title="{{item.previous_company_3}}">{{item.previous_company_3 | default:"--"}}</td>
+            <td title="{{item.company_city}}">{{item.company_city | default:"--"}}</td>
+            <td title="{{item.company_state}}">{{item.company_state | default:"--"}}</td>
+            <td title="{{item.company_country}}">{{item.company_country | default:"--"}}</td>
+            <td><a {% if not item.person_angellist_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.person_angellist_url}}" target="_blank"{% endif %} >AngelList</a></td>
+            <td><a {% if not item.person_crunchbase_url %}class="opacity-point-2" href="#" title="no url found." {% else %}  href="{{item.person_crunchbase_url}}" target="_blank"{% endif %}>Crunchbase</a></td>
+            <td><a {% if not item.person_twitter_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.person_twitter_url}}" target="_blank"{% endif %}>Twitter</a></td>
+            <td><a {% if not item.person_facebook_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.person_facebook_url}}" target="_blank"{% endif %} >Facebook</a></td>
+            <td><a {% if not item.company_linkedin_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.company_linkedin_url}}" target="_blank"{% endif %} >Company Linkedin</a></td>
+            <td><a href="{{item.person_image_url}}" target="_blank"><img class="item-img" src="{{item.person_image_url}}" alt="person img"></a></td>
+            <td><a href="{{item.company_logo_url}}" target="_blank"><img class="item-img" src="{{item.company_logo_url}}" alt="company logosss"></a></td>
         </tr>
         {% empty %}
         <tr>
