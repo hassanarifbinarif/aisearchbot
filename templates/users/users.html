@@ -113,6 +113,10 @@
                     </div>
                 </td>
             </tr>
+            {% empty %}
+            <tr>
+                <td colspan="4" class="no-record-row">No Record Available</td>
+            </tr>
         {% endfor %}                              
         </tbody>
     </table>
