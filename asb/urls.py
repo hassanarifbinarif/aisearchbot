@@ -32,4 +32,9 @@ urlpatterns = [
     path('get-candidate-data/<str:params>/', views.get_candidate_data, name='get_candidate_data'),
     path('get-duplicate-data/<str:params>/', views.get_duplicate_data, name='get_duplicate_data'),
     path('resolve-conflict/', views.resolve_conflict, name='resolve_conflict'),
+
+    path('search-matching-profile/', views.search_profile, name='search_matching_profile'),
+
+    path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
+    path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
 ]

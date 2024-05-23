@@ -542,3 +542,84 @@ def resolve_conflict(request):
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def search_profile(request):
+    context = {}
+    if request.method == 'POST':
+        keywords = request.POST.get('keywords').split()
+        
+        try:
+            query_dict = request.POST
+            key_with_on_value = query_dict.get('search_by_filter', 'Phone or Email')
+            # for key, value in query_dict.items():
+            #     if value == 'on':
+            #         key_with_on_value = key
+            #         break
+            keywords = query_dict.get('keywords')
+            location = query_dict.get('location')
+            # search_id = query_dict.get('search_id', None)
+            
+            search_fields = [
+                'full_name', 'first_name', 'last_name', 'headline', 'current_position',
+                'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
+                'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
+                'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
+                'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
+                'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
+                'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
+                'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
+            ]
+
+            records = CandidateProfiles.objects.all()
+
+            if keywords:
+                for keyword in keywords:
+                    records = records.filter(
+                        Q(headline__icontains=keyword) |
+                        Q(current_position__icontains=keyword) |
+                        Q(person_skills__icontains=keyword)
+                    )
+            if location:
+                records = records.filter(
+                    Q(person_city__icontains=location) |
+                    Q(person_state__icontains=location) |
+                    Q(person_country__icontains=location)
+                )
+            
+            page_number = query_dict.get("page", 1)
+            paginator = Paginator(records, 3)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            
+            context['success'] = True
+            context['records_count'] = records.count()
+            context['records'] = list(page_obj.object_list.values(*search_fields))
+            return JsonResponse(context, status=200)
+            
+
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happed!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
+# Temporary view to delete all candidates
+
+def delete_all_candidates(request):
+    CandidateProfiles.objects.all().delete()
+    return redirect('/dashboard')
+
+
+# Temporary view to delete all duplicates
+
+def delete_all_duplicates(request):
+    DuplicateProfiles.objects.all().delete()
+    return redirect('/dashboard')

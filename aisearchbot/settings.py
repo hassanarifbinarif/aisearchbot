@@ -46,9 +46,13 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 
     'asb',
+    
+    'corsheaders',
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
+
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -57,6 +61,19 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
+
+ALLOWED_ORIGIN_URL = env.str('ALLOWED_ORIGIN_URL')
+
+CORS_ALLOWED_ORIGINS = [f"{ALLOWED_ORIGIN_URL}"]
+
+CORS_ALLOW_HEADERS = (
+    "accept",
+    "authorization",
+    "content-type",
+    "user-agent",
+    "x-csrftoken",
+    "x-requested-with",
+)
 
 ROOT_URLCONF = 'aisearchbot.urls'
 
