@@ -115,6 +115,7 @@ def reset_password(request):
     context ={}
     context['hide_nav_func'] =True
     email = request.session.get('email')
+    form = None
     try:
         user = User.objects.get(email = email)
         form = AdminPasswordChangeForm(user)
@@ -126,8 +127,12 @@ def reset_password(request):
                 messages.success(request, 'Password is successfully Reset')
                 return redirect('super_admin_login')
             print(form.errors)
+    except User.DoesNotExist:
+        messages.error(request, 'User with the provided email does not exist.')
     except Exception as e:
         print(e)
+        messages.error(request, 'An error occurred while resetting the password.')
+
     context['form'] = form
     return render(request, 'abs-authentication/reset-password.html', context)
 
