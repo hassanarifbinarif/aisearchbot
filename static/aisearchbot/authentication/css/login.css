@@ -1,4 +1,4 @@
-.auth-section {
+    .auth-section {
     max-width: 1920px;
 }
 
@@ -17,12 +17,12 @@ form{
     width: 100%;
     /* height: 751px; */
     border-radius: 30px;
-    padding: 30px;
+    padding: 15px;
     
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 60px;
+    gap: 35px;
     justify-content: space-between;
 }
 
@@ -36,17 +36,17 @@ form{
 .login-form-content h1 {
     font-size: 2.375rem;
     font-weight: 800;
-    line-height: 57px;
+    line-height: 40px;
     margin-bottom: 0px;
 }
 
 .login-form-content > span {
     font-size: 1.375rem;
     font-weight: 500;
-    line-height: 33px;
+    line-height: 24px;
     text-align: center;
     color: var(--text-field-heading);
-    max-width: 407px;
+    max-width: 450px;
 }
 
 .login-form-container form {
@@ -57,7 +57,7 @@ form{
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 20px;
+    gap: 10px;
 }
 
 .login-input-group label {
