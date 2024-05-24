@@ -115,16 +115,19 @@ def reset_password(request):
     context ={}
     context['hide_nav_func'] =True
     email = request.session.get('email')
-    user = User.objects.get(email = email)
-    form = AdminPasswordChangeForm(user)
+    try:
+        user = User.objects.get(email = email)
+        form = AdminPasswordChangeForm(user)
 
-    if request.method == 'POST':
-        form = AdminPasswordChangeForm(data=request.POST, user=user)
-        if form.is_valid():
-            form.save()
-            messages.success(request, 'Password is successfully Reset')
-            return redirect('super_admin_login')
-        print(form.errors)
+        if request.method == 'POST':
+            form = AdminPasswordChangeForm(data=request.POST, user=user)
+            if form.is_valid():
+                form.save()
+                messages.success(request, 'Password is successfully Reset')
+                return redirect('super_admin_login')
+            print(form.errors)
+    except Exception as e:
+        print(e)
     context['form'] = form
     return render(request, 'abs-authentication/reset-password.html', context)
 
