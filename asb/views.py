@@ -70,6 +70,8 @@ def send_otp(request):
                 else:
                     request.session['email'] = email
                     return redirect('super_admin_login_verify_code')
+        except User.DoesNotExist:
+            messages.error(request, 'User with the provided email does not exist.')
         except Exception as e:
             print(e)
             messages.error(request, 'Something bad happened')
