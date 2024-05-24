@@ -105,7 +105,7 @@ def verify_code(request):
         else:
             otp_record.used = True
             otp_record.save(update_fields=['used'])
-            messages.success(request, 'Verification code successfully verified')
+            # messages.success(request, 'Verification code successfully verified')
             return redirect('super_admin_login_reset_password')
        
        except Exception as e:
