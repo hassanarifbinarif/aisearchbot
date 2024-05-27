@@ -583,7 +583,7 @@ def search_profile(request):
                 'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
             ]
 
-            records = CandidateProfiles.objects.all()
+            records = CandidateProfiles.objects.all().order_by('-id')
 
             if keywords:
                 for keyword in keywords:
@@ -626,11 +626,11 @@ def search_profile(request):
 
 def delete_all_candidates(request):
     CandidateProfiles.objects.all().delete()
-    return redirect('/dashboard')
+    return redirect('/')
 
 
 # Temporary view to delete all duplicates
 
 def delete_all_duplicates(request):
     DuplicateProfiles.objects.all().delete()
-    return redirect('/dashboard')
+    return redirect('/')
