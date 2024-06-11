@@ -645,11 +645,18 @@ def toggle_visibility(request):
             data = json.loads(request.body)
             user_id = data.get('user', None)
             record_id = data.get('record_id', None)
-            show_email1 = data.get('show_email1', False)
-            show_email2 = data.get('show_email2', False)
-            show_phone1 = data.get('show_phone1', False)
-            show_phone2 = data.get('show_phone2', False)
-            update_fields = {'show_email1': show_email1, 'show_email2': show_email2, 'show_phone1': show_phone1, 'show_phone2': show_phone2}
+            # show_email1 = data.get('show_email1', False)
+            # show_email2 = data.get('show_email2', False)
+            # show_phone1 = data.get('show_phone1', False)
+            # show_phone2 = data.get('show_phone2', False)
+            
+            update_fields = {}
+
+            fields = ['show_email1', 'show_email2', 'show_phone1', 'show_phone2']
+            for field in fields:
+                if field in data:
+                    update_fields[field] = data[field]
+            # update_fields = {'show_email1': show_email1, 'show_email2': show_email2, 'show_phone1': show_phone1, 'show_phone2': show_phone2}
             new = ProfileVisibilityToggle.objects.update_or_create(search_user_id=user_id, candidate_id=record_id, defaults=update_fields)
             return JsonResponse({'success': True, 'message': 'Visibility toggled successfully'}, status=200)
         except Exception as e:
