@@ -154,6 +154,15 @@ class DuplicateProfiles(models.Model):
     original_profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
 
 
+class ProfileVisibilityToggle(models.Model):
+    search_user_id = models.IntegerField()
+    candidate = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
+    show_email1 = models.BooleanField(default=False)
+    show_email2 = models.BooleanField(default=False)
+    show_phone1 = models.BooleanField(default=False)
+    show_phone2 = models.BooleanField(default=False)
+
+
 # Signals
 
 

@@ -35,6 +35,8 @@ urlpatterns = [
 
     path('search-matching-profile/', views.search_profile, name='search_matching_profile'),
 
+    path('toggle-visibility/', views.toggle_visibility, name='toggle_visibility'),
+
     path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
     path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
 ]

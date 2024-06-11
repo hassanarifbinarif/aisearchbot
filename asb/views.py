@@ -14,7 +14,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import CandidateProfiles, DuplicateProfiles, User, OTP, SharedUsers
+from .models import CandidateProfiles, DuplicateProfiles, ProfileVisibilityToggle, User, OTP, SharedUsers
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
@@ -560,6 +560,7 @@ def search_profile(request):
     context = {}
     if request.method == 'POST':
         keywords = request.POST.get('keywords').split()
+        user = request.POST.get('user_id', None)
         
         try:
             query_dict = request.POST
@@ -573,7 +574,7 @@ def search_profile(request):
             # search_id = query_dict.get('search_id', None)
             
             search_fields = [
-                'full_name', 'first_name', 'last_name', 'headline', 'current_position',
+                'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
                 'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
                 'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
                 'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
@@ -606,10 +607,25 @@ def search_profile(request):
             context['total_pages'] = paginator.num_pages
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
+
+            page_obj = list(page_obj.object_list.values(*search_fields))
+            for item in page_obj:
+                item['show_email1'] = False
+                item['show_email2'] = False
+                item['show_phone1'] = False
+                item['show_phone2'] = False
+                try:
+                    profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
+                    item['show_email1'] = profile_visibility.show_email1
+                    item['show_email2'] = profile_visibility.show_email2
+                    item['show_phone1'] = profile_visibility.show_phone1
+                    item['show_phone2'] = profile_visibility.show_phone2
+                except Exception as e:
+                    print(e)
             
             context['success'] = True
             context['records_count'] = records.count()
-            context['records'] = list(page_obj.object_list.values(*search_fields))
+            context['records'] = page_obj
             return JsonResponse(context, status=200)
             
 
@@ -620,6 +636,26 @@ def search_profile(request):
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
+
+
+@csrf_exempt
+def toggle_visibility(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            user_id = data.get('user', None)
+            record_id = data.get('record_id', None)
+            show_email1 = data.get('show_email1', False)
+            show_email2 = data.get('show_email2', False)
+            show_phone1 = data.get('show_phone1', False)
+            show_phone2 = data.get('show_phone2', False)
+            update_fields = {'show_email1': show_email1, 'show_email2': show_email2, 'show_phone1': show_phone1, 'show_phone2': show_phone2}
+            new = ProfileVisibilityToggle.objects.update_or_create(search_user_id=user_id, candidate_id=record_id, defaults=update_fields)
+            return JsonResponse({'success': True, 'message': 'Visibility toggled successfully'}, status=200)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
 # Temporary view to delete all candidates
