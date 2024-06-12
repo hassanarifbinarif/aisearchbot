@@ -686,7 +686,7 @@ def get_favourite_profiles(request):
                 'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
             ]
 
-            records = ProfileVisibilityToggle.objects.select_related('candidate').filter(search_user_id=int(user_id)).order_by('-id')
+            records = ProfileVisibilityToggle.objects.select_related('candidate').filter(search_user_id=int(user_id), is_favourite=True).order_by('-id')
             page_number = query_dict.get("page", 1)
             paginator = Paginator(records, 3)
             page_obj = paginator.get_page(page_number)
