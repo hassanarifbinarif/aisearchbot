@@ -614,12 +614,14 @@ def search_profile(request):
                 item['show_email2'] = False
                 item['show_phone1'] = False
                 item['show_phone2'] = False
+                item['is_favourite'] = False
                 try:
                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
                     item['show_email1'] = profile_visibility.show_email1
                     item['show_email2'] = profile_visibility.show_email2
                     item['show_phone1'] = profile_visibility.show_phone1
                     item['show_phone2'] = profile_visibility.show_phone2
+                    item['is_favourite'] = profile_visibility.is_favourite
                 except Exception as e:
                     print(e)
             
@@ -652,7 +654,7 @@ def toggle_visibility(request):
             
             update_fields = {}
 
-            fields = ['show_email1', 'show_email2', 'show_phone1', 'show_phone2']
+            fields = ['show_email1', 'show_email2', 'show_phone1', 'show_phone2', 'is_favourite']
             for field in fields:
                 if field in data:
                     update_fields[field] = data[field]
@@ -663,6 +665,99 @@ def toggle_visibility(request):
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def get_favourite_profiles(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            print(query_dict)
+            user_id = query_dict.get('user_id')
+            search_fields = [
+                'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
+                'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
+                'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
+                'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
+                'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
+                'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
+                'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
+                'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
+            ]
+
+            records = ProfileVisibilityToggle.objects.select_related('candidate').filter(search_user_id=int(user_id)).order_by('-id')
+            page_number = query_dict.get("page", 1)
+            paginator = Paginator(records, 3)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+
+            page_obj_list = []
+            for item in page_obj.object_list:
+                candidate_dict = {
+                    'id': item.candidate.id,
+                    'full_name': item.candidate.full_name,
+                    'first_name': item.candidate.first_name,
+                    'last_name': item.candidate.last_name,
+                    'headline': item.candidate.headline,
+                    'current_position': item.candidate.current_position,
+                    'company_name': item.candidate.company_name,
+                    'person_city': item.candidate.person_city,
+                    'person_state': item.candidate.person_state,
+                    'person_country': item.candidate.person_country,
+                    'person_industry': item.candidate.person_industry,
+                    'tags': item.candidate.tags,
+                    'person_skills': item.candidate.person_skills,
+                    'education_experience': item.candidate.education_experience,
+                    'company_website': item.candidate.company_website,
+                    'email1': item.candidate.email1,
+                    'email2': item.candidate.email2,
+                    'phone1': item.candidate.phone1,
+                    'phone2': item.candidate.phone2,
+                    'person_linkedin_url': item.candidate.person_linkedin_url,
+                    'company_size_from': item.candidate.company_size_from,
+                    'company_size_to': item.candidate.company_size_to,
+                    'current_position_2': item.candidate.current_position_2,
+                    'current_company_2': item.candidate.current_company_2,
+                    'previous_position_2': item.candidate.previous_position_2,
+                    'previous_company_2': item.candidate.previous_company_2,
+                    'previous_position_3': item.candidate.previous_position_3,
+                    'previous_company_3': item.candidate.previous_company_3,
+                    'company_city': item.candidate.company_city,
+                    'company_state': item.candidate.company_state,
+                    'company_country': item.candidate.company_country,
+                    'person_angellist_url': item.candidate.person_angellist_url,
+                    'person_crunchbase_url': item.candidate.person_crunchbase_url,
+                    'person_twitter_url': item.candidate.person_twitter_url,
+                    'person_facebook_url': item.candidate.person_facebook_url,
+                    'company_linkedin_url': item.candidate.company_linkedin_url,
+                    'person_image_url': item.candidate.person_image_url,
+                    'company_logo_url': item.candidate.company_logo_url
+                }
+                candidate_dict['show_email1'] = item.show_email1
+                candidate_dict['show_email2'] = item.show_email2
+                candidate_dict['show_phone1'] = item.show_phone1
+                candidate_dict['show_phone2'] = item.show_phone2
+                candidate_dict['is_favourite'] = item.is_favourite
+                
+                page_obj_list.append(candidate_dict)
+            
+            context['success'] = True
+            context['records_count'] = records.count()
+            context['records'] = page_obj_list
+            return JsonResponse(context, status=200)
+            
+
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happed!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
 
 
 # Temporary view to delete all candidates

@@ -161,6 +161,7 @@ class ProfileVisibilityToggle(models.Model):
     show_email2 = models.BooleanField(default=False)
     show_phone1 = models.BooleanField(default=False)
     show_phone2 = models.BooleanField(default=False)
+    is_favourite = models.BooleanField(default=False)
 
 
 # Signals

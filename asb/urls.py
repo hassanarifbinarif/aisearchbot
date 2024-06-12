@@ -37,6 +37,8 @@ urlpatterns = [
 
     path('toggle-visibility/', views.toggle_visibility, name='toggle_visibility'),
 
+    path('get-favourite-profiles/', views.get_favourite_profiles, name='get_favourite_profiles'),
+
     path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
     path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
 ]
