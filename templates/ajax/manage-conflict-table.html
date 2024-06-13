@@ -8,6 +8,7 @@
                 <span class='text-light me-1'>Resolve</span>
             </th>
             {% for field in field_names %}
+            {% if field != 'Id' %}
                 <th scope="col" id='state' onclick="table_sort(event, {{ forloop.counter0 }})" data-col='' >
                     <span class='text-light me-1'>{{field | title}}</span>
                     <span>
@@ -17,6 +18,7 @@
                         </svg>
                     </span>
                 </th>
+            {% endif %}
             {% endfor %}
         </tr>
     </thead>

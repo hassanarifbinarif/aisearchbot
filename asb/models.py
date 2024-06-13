@@ -92,8 +92,8 @@ class CandidateProfiles(models.Model):
     phone1 = models.CharField(max_length=50, null=True, blank=True)
     phone2 = models.CharField(max_length=50, null=True, blank=True)
     person_linkedin_url = models.URLField(max_length=2000, null=True, blank=True)
-    company_size_from = models.CharField(max_length=50, null=True, blank=True)
-    company_size_to = models.CharField(max_length=50, null=True, blank=True)
+    company_size_from = models.IntegerField(null=True, blank=True)
+    company_size_to = models.IntegerField(null=True, blank=True)
     current_position_2 = models.CharField(max_length=250, null=True, blank=True)
     current_company_2 = models.CharField(max_length=200, null=True, blank=True)
     previous_position_2 = models.CharField(max_length=250, null=True, blank=True)
@@ -110,6 +110,13 @@ class CandidateProfiles(models.Model):
     company_linkedin_url = models.URLField(max_length=2000, null=True, blank=True)
     person_image_url = models.URLField(max_length=2000, null=True, blank=True)
     company_logo_url = models.URLField(max_length=2000, null=True, blank=True)
+
+    def save(self, *args, **kwargs):
+        if self.company_size_from == '':
+            self.company_size_from = None
+        if self.company_size_to == '':
+            self.company_size_to = None
+        super(CandidateProfiles, self).save(*args, **kwargs)
 
 
 class DuplicateProfiles(models.Model):

@@ -2,7 +2,7 @@ import json
 import operator
 import pandas as pd
 from django.template import loader
-from django.db.models import Q
+from django.db.models import Q, Case, When, IntegerField
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
 from aisearchbot.helpers import send_verification_code_email, send_account_credentials_email
@@ -19,6 +19,7 @@ from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models.functions import Cast
 
 # authentication views
 def super_admin_login(request):
@@ -377,7 +378,13 @@ def import_file_data(request):
                 is_duplicate = False
 
                 for index, row in df.iterrows():
-                    profile_data = {field_name_in_model: row[column_name_in_df] for column_name_in_df, field_name_in_model in column_map.items()}
+                    profile_data = {}
+                    for column_name_in_df, field_name_in_model in column_map.items():
+                        value = row[column_name_in_df]
+                        if value == '':
+                            value = None
+                        profile_data[field_name_in_model] = value
+                    # profile_data = {field_name_in_model: row[column_name_in_df] for column_name_in_df, field_name_in_model in column_map.items()}
                     email = profile_data['email1']
                     try:
                         original_profile = CandidateProfiles.objects.get(email1=email)
@@ -564,13 +571,21 @@ def search_profile(request):
         
         try:
             query_dict = request.POST
+            print(query_dict)
             key_with_on_value = query_dict.get('search_by_filter', 'Phone or Email')
             # for key, value in query_dict.items():
             #     if value == 'on':
             #         key_with_on_value = key
             #         break
-            keywords = query_dict.get('keywords')
-            location = query_dict.get('location')
+            keywords = query_dict.get('keywords', '')
+            location = query_dict.get('location', '')
+            company_size_from = query_dict.get('size_from', None)
+            company_size_to = query_dict.get('size_to', None)
+            
+            if company_size_from == "" or company_size_from == "null":
+                company_size_from = None
+            if company_size_to == "" or company_size_to == "null":
+                company_size_to = None 
             # search_id = query_dict.get('search_id', None)
             
             search_fields = [
@@ -599,6 +614,25 @@ def search_profile(request):
                     Q(person_state__icontains=location) |
                     Q(person_country__icontains=location)
                 )
+            
+            if company_size_from is not None:
+                company_size_from = int(company_size_from)
+            else:
+                company_size_from = 0
+            if company_size_to is not None:
+                company_size_to = int(company_size_to)
+            
+            filter_conditions = Q()
+            if company_size_from is not None:
+                filter_conditions &= (Q(company_size_from__gte=company_size_from))
+            if company_size_to is not None:
+                filter_conditions &= (Q(company_size_to__lte=company_size_to))
+
+            records = records.filter(filter_conditions)
+            # records = annotated_queryset.filter(
+            #     Q(company_size_from_int__gte=company_size_from) | Q(company_size_from_int__isnull=True),
+            #     Q(company_size_to_int__lte=company_size_to) | Q(company_size_to_int__isnull=True)
+            # )
             
             page_number = query_dict.get("page", 1)
             paginator = Paginator(records, 3)
