@@ -579,6 +579,7 @@ def search_profile(request):
             #         break
             keywords = query_dict.get('keywords', '')
             location = query_dict.get('location', '')
+            selected_filter = query_dict.get('search_by_filter', '')
             company_size_from = query_dict.get('size_from', None)
             company_size_to = query_dict.get('size_to', None)
             
@@ -614,6 +615,15 @@ def search_profile(request):
                     Q(person_state__icontains=location) |
                     Q(person_country__icontains=location)
                 )
+                
+            if selected_filter == 'Email':
+                records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False))        
+            
+            if selected_filter == 'Phone':
+                records = records.filter(phone2__isnull=False)
+                
+            if selected_filter == 'Phone or Email':
+                records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False) | Q(phone2__isnull=False))
             
             if company_size_from is not None:
                 company_size_from = int(company_size_from)
