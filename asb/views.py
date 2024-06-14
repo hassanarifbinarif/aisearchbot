@@ -635,7 +635,7 @@ def search_profile(request):
             # )
             
             page_number = query_dict.get("page", 1)
-            paginator = Paginator(records, 3)
+            paginator = Paginator(records, 20)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
             context['total_pages'] = paginator.num_pages
@@ -722,7 +722,7 @@ def get_favourite_profiles(request):
 
             records = ProfileVisibilityToggle.objects.select_related('candidate').filter(search_user_id=int(user_id), is_favourite=True).order_by('-id')
             page_number = query_dict.get("page", 1)
-            paginator = Paginator(records, 3)
+            paginator = Paginator(records, 20)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
             context['total_pages'] = paginator.num_pages
