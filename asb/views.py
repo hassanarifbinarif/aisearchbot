@@ -347,10 +347,10 @@ def import_file_data(request):
                     'person_skills': 'person_skills',
                     'education_experience': 'education_experience',
                     'company_website': 'company_website',
-                    'email1': 'email1',
-                    'email2': 'email2',
-                    'phone1': 'phone1',
-                    'phone2': 'phone2',
+                    'Email_perso': 'email1',
+                    'Email_pro': 'email2',
+                    'Landline': 'phone1',
+                    'Cell_phone': 'phone2',
                     'person_linkedin_url': 'person_linkedin_url',
                     'company_size_from': 'company_size_from',
                     'company_size_to': 'company_size_to',
@@ -440,9 +440,17 @@ def export_file_data(request):
     # if not df.empty:
     #     queryset = CandidateProfiles.objects.all().values(*fields)
     #     df = pd.DataFrame(queryset)
+
+    replacements = {
+        'email1': 'Email_perso',
+        'email2': 'Email_pro',
+        'phone1': 'Landline',
+        'phone2': 'Cell_phone'
+    }
     
     queryset = CandidateProfiles.objects.all().values(*fields)
     df = pd.DataFrame(list(queryset))
+    df = df.rename(columns=replacements, inplace=False)
     
     # data = df.to_dict(orient='records')
     # return JsonResponse(data, safe=False)
@@ -466,6 +474,17 @@ def get_candidate_data(request, params):
     field_names = [field.name for field in model._meta.get_fields()]
     formatted_field_names = [field.replace('_', ' ').capitalize() for field in field_names]
     formatted_field_names = formatted_field_names[2:]
+
+    replacements = {
+        'Email1': 'Email Perso',
+        'Email2': 'Email Pro',
+        'Phone1': 'Landline',
+        'Phone2': 'Cell Phone'
+    }
+    formatted_field_names = [
+        replacements.get(field, field) for field in formatted_field_names
+    ]
+
     context['field_names'] =  formatted_field_names
     try:
         params_list = params.split('&')
@@ -507,6 +526,17 @@ def get_duplicate_data(request, params):
     field_names = [field.name for field in model._meta.get_fields()]
     formatted_field_names = [field.replace('_', ' ').capitalize() for field in field_names]
     formatted_field_names = formatted_field_names[2:]
+
+    replacements = {
+        'Email1': 'Email Perso',
+        'Email2': 'Email Pro',
+        'Phone1': 'Landline',
+        'Phone2': 'Cell Phone'
+    }
+    formatted_field_names = [
+        replacements.get(field, field) for field in formatted_field_names
+    ]
+
     context['field_names'] =  formatted_field_names
     try:
         params_list = params.split('&')
