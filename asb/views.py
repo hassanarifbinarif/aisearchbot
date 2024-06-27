@@ -148,6 +148,8 @@ def reset_password(request):
 def dashboard(request):
     context={}
     context['active_sidebar'] = 'dashboard'
+    loc = LocationDetails.objects.all().count()
+    print(loc)
     return render(request, 'dashboard/listing.html', context)
 
 
@@ -374,7 +376,7 @@ def import_file_data(request):
                     'company_logo_url': 'company_logo_url',
                 }
 
-                existing_emails = set(CandidateProfiles.objects.values_list('email1', flat=True))
+                # existing_emails = set(CandidateProfiles.objects.values_list('email1', flat=True))
                 new_instances = []
                 duplicate_instances = []
                 is_duplicate = False
@@ -879,25 +881,31 @@ def location_data_upload(request):
             file_obj = request.FILES['cities']
             data = json.load(file_obj)
 
+            BATCH_SIZE = 100
+            cities_data = data['cities']
             city_objects = []
-            for city_data in data['cities']:
-                try:
-                    city_objects.append(LocationDetails(
-                        insee_code=city_data['insee_code'],
-                        city_code=city_data['city_code'],
-                        zip_code=city_data['zip_code'],
-                        label=city_data['label'],
-                        latitude=city_data['latitude'],
-                        longitude=city_data['longitude'],
-                        department_name=city_data['department_name'],
-                        department_number=city_data['department_number'],
-                        region_name=city_data['region_name'],
-                        region_geojson_name=city_data['region_geojson_name']
-                    ))
-                except KeyError as e:
-                    return JsonResponse({'error': f'Missing key in data: {str(e)}'}, status=400)
+            try:
+                for i in range(0, len(cities_data), BATCH_SIZE):
+                    city_batch = cities_data[i:i + BATCH_SIZE]
+                    city_objects = [
+                        LocationDetails(
+                            insee_code=city_data['insee_code'],
+                            city_code=city_data['city_code'],
+                            zip_code=city_data['zip_code'],
+                            label=city_data['label'],
+                            latitude=city_data['latitude'],
+                            longitude=city_data['longitude'],
+                            department_name=city_data['department_name'],
+                            department_number=city_data['department_number'],
+                            region_name=city_data['region_name'],
+                            region_geojson_name=city_data['region_geojson_name']
+                        ) for city_data in city_batch
+                    ]
+                    LocationDetails.objects.bulk_create(city_objects)
+            except KeyError as e:
+                return JsonResponse({'error': f'{str(e)}'}, status=400)
                 
-            LocationDetails.objects.bulk_create(city_objects)
+            # LocationDetails.objects.bulk_create(city_objects)
                 # LocationDetails.objects.create(
                 #     insee_code=city_data['insee_code'],
                 #     city_code=city_data['city_code'],
