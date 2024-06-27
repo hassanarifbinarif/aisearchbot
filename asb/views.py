@@ -1,7 +1,9 @@
+import os
 import json
 import operator
 import pandas as pd
 from django.template import loader
+from collections import Counter
 from django.db.models import Q, Case, When, IntegerField
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
@@ -14,7 +16,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import CandidateProfiles, DuplicateProfiles, ProfileVisibilityToggle, User, OTP, SharedUsers
+from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, User, OTP, SharedUsers
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
@@ -639,12 +641,32 @@ def search_profile(request):
                         Q(current_position__icontains=keyword) |
                         Q(person_skills__icontains=keyword)
                     )
-            if location:
-                records = records.filter(
+            normalized_location_string = location.replace('-', ' ')
+            hyphenated_location_string = location.replace(' ', '-')
+            matching_locations = LocationDetails.objects.filter(Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | Q(region_name__icontains=hyphenated_location_string))
+            city_names = matching_locations.values_list('label', flat=True)
+
+            records = records.filter(
                     Q(person_city__icontains=location) |
                     Q(person_state__icontains=location) |
-                    Q(person_country__icontains=location)
+                    Q(person_country__icontains=location) |
+                    Q(person_city__icontains=normalized_location_string) |
+                    Q(person_state__icontains=normalized_location_string) |
+                    Q(person_country__icontains=normalized_location_string) |
+                    Q(person_city__icontains=hyphenated_location_string) |
+                    Q(person_state__icontains=hyphenated_location_string) |
+                    Q(person_country__icontains=hyphenated_location_string) |
+                    Q(person_city__in=city_names) |
+                    Q(person_state__in=city_names) |
+                    Q(person_country__in=city_names)
                 )
+
+            # if location:
+            #     records = records.filter(
+            #         Q(person_city__icontains=location) |
+            #         Q(person_state__icontains=location) |
+            #         Q(person_country__icontains=location)
+            #     )
                 
             if selected_filter == 'Email':
                 records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False))        
@@ -836,6 +858,7 @@ def get_favourite_profiles(request):
 
 # Temporary view to delete all candidates
 
+@super_admin_required
 def delete_all_candidates(request):
     CandidateProfiles.objects.all().delete()
     return redirect('/')
@@ -843,6 +866,59 @@ def delete_all_candidates(request):
 
 # Temporary view to delete all duplicates
 
+@super_admin_required
 def delete_all_duplicates(request):
     DuplicateProfiles.objects.all().delete()
+    return redirect('/')
+
+
+@csrf_exempt
+def location_data_upload(request):
+    if request.method == 'POST':
+        try:
+            file_obj = request.FILES['cities']
+            data = json.load(file_obj)
+
+            city_objects = []
+            for city_data in data['cities']:
+                try:
+                    city_objects.append(LocationDetails(
+                        insee_code=city_data['insee_code'],
+                        city_code=city_data['city_code'],
+                        zip_code=city_data['zip_code'],
+                        label=city_data['label'],
+                        latitude=city_data['latitude'],
+                        longitude=city_data['longitude'],
+                        department_name=city_data['department_name'],
+                        department_number=city_data['department_number'],
+                        region_name=city_data['region_name'],
+                        region_geojson_name=city_data['region_geojson_name']
+                    ))
+                except KeyError as e:
+                    return JsonResponse({'error': f'Missing key in data: {str(e)}'}, status=400)
+                
+            LocationDetails.objects.bulk_create(city_objects)
+                # LocationDetails.objects.create(
+                #     insee_code=city_data['insee_code'],
+                #     city_code=city_data['city_code'],
+                #     zip_code=city_data['zip_code'],
+                #     label=city_data['label'],
+                #     latitude=city_data['latitude'],
+                #     longitude=city_data['longitude'],
+                #     department_name=city_data['department_name'],
+                #     department_number=city_data['department_number'],
+                #     region_name=city_data['region_name'],
+                #     region_geojson_name=city_data['region_geojson_name']
+                # )
+            return JsonResponse({'status': 'success'}, status=201)
+        except Exception as e:
+            print(e)
+    return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+# Temporary view to delete all location data
+
+@super_admin_required
+def delete_all_cities_data(request):
+    LocationDetails.objects.all().delete()
     return redirect('/')

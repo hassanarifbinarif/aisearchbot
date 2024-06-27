@@ -41,4 +41,7 @@ urlpatterns = [
 
     path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
     path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
+
+    path('upload-location-data/', views.location_data_upload, name='location_data_upload'),
+    path('del-location-data/', views.delete_all_cities_data, name='delete_all_cities_data')
 ]
