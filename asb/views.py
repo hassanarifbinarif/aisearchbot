@@ -148,8 +148,10 @@ def reset_password(request):
 def dashboard(request):
     context={}
     context['active_sidebar'] = 'dashboard'
-    loc = LocationDetails.objects.all().count()
-    print(loc)
+    loc = LocationDetails.objects.filter(department_name__icontains='haute-garonne')
+    for lo in loc:
+        print(lo)
+    # print(loc)
     return render(request, 'dashboard/listing.html', context)
 
 
@@ -596,6 +598,8 @@ def resolve_conflict(request):
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
+from django.db.models.functions import Lower
+
 @csrf_exempt
 def search_profile(request):
     context = {}
@@ -653,22 +657,35 @@ def search_profile(request):
             city_labels = matching_locations.values_list('label', flat=True)
             city_codes = matching_locations.values_list('city_code', flat=True)
 
+            normalized_city_labels = []
+            hyphenated_city_labels = []
+            for label in city_labels:
+                normalized_city_labels.append(label.replace('-', ' '))
+                hyphenated_city_labels.append(label.replace(' ', '-'))
+
+            records = records.annotate(personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
             records = records.filter(
-                    Q(person_city__icontains=location) |
-                    Q(person_state__icontains=location) |
-                    Q(person_country__icontains=location) |
-                    Q(person_city__icontains=normalized_location_string) |
-                    Q(person_state__icontains=normalized_location_string) |
-                    Q(person_country__icontains=normalized_location_string) |
-                    Q(person_city__icontains=hyphenated_location_string) |
-                    Q(person_state__icontains=hyphenated_location_string) |
-                    Q(person_country__icontains=hyphenated_location_string) |
-                    Q(person_city__in=city_labels) |
-                    Q(person_state__in=city_labels) |
-                    Q(person_country__in=city_labels) |
-                    Q(person_city__in=city_codes) |
-                    Q(person_state__in=city_codes) |
-                    Q(person_country__in=city_codes)
+                    Q(personCity__icontains=location) |
+                    Q(personState__icontains=location) |
+                    Q(personCountry__icontains=location) |
+                    Q(personCity__icontains=normalized_location_string) |
+                    Q(personState__icontains=normalized_location_string) |
+                    Q(personCountry__icontains=normalized_location_string) |
+                    Q(personCity__icontains=hyphenated_location_string) |
+                    Q(personState__icontains=hyphenated_location_string) |
+                    Q(personCountry__icontains=hyphenated_location_string) |
+                    Q(personCity__in=city_labels) |
+                    Q(personState__in=city_labels) |
+                    Q(personCountry__in=city_labels) |
+                    Q(personCity__in=normalized_city_labels) |
+                    Q(personState__in=normalized_city_labels) |
+                    Q(personCountry__in=normalized_city_labels) |
+                    Q(personCity__in=hyphenated_city_labels) |
+                    Q(personState__in=hyphenated_city_labels) |
+                    Q(personCountry__in=hyphenated_city_labels) |
+                    Q(personCity__in=city_codes) |
+                    Q(personState__in=city_codes) |
+                    Q(personCountry__in=city_codes)
                 )
 
             # if location:
