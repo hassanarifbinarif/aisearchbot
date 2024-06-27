@@ -647,7 +647,7 @@ def search_profile(request):
             hyphenated_location_string = location.replace(' ', '-')
             matching_locations = LocationDetails.objects.filter(
                 Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | 
-                Q(region_name__icontains=hyphenated_location_string) | Q(department_name__incontains=location) |
+                Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=location) |
                 Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
             )
             city_labels = matching_locations.values_list('label', flat=True)
