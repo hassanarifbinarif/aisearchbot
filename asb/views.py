@@ -645,8 +645,13 @@ def search_profile(request):
                     )
             normalized_location_string = location.replace('-', ' ')
             hyphenated_location_string = location.replace(' ', '-')
-            matching_locations = LocationDetails.objects.filter(Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | Q(region_name__icontains=hyphenated_location_string))
-            city_names = matching_locations.values_list('label', flat=True)
+            matching_locations = LocationDetails.objects.filter(
+                Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | 
+                Q(region_name__icontains=hyphenated_location_string) | Q(department_name__incontains=location) |
+                Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
+            )
+            city_labels = matching_locations.values_list('label', flat=True)
+            city_codes = matching_locations.values_list('city_code', flat=True)
 
             records = records.filter(
                     Q(person_city__icontains=location) |
@@ -658,9 +663,12 @@ def search_profile(request):
                     Q(person_city__icontains=hyphenated_location_string) |
                     Q(person_state__icontains=hyphenated_location_string) |
                     Q(person_country__icontains=hyphenated_location_string) |
-                    Q(person_city__in=city_names) |
-                    Q(person_state__in=city_names) |
-                    Q(person_country__in=city_names)
+                    Q(person_city__in=city_labels) |
+                    Q(person_state__in=city_labels) |
+                    Q(person_country__in=city_labels) |
+                    Q(person_city__in=city_codes) |
+                    Q(person_state__in=city_codes) |
+                    Q(person_country__in=city_codes)
                 )
 
             # if location:
