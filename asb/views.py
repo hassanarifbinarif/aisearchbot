@@ -817,6 +817,10 @@ def get_favourite_profiles(request):
             records = records.annotate(personCity=Lower('candidate__person_city'), personState=Lower('candidate__person_state'), personCountry=Lower('candidate__person_country'))
 
             records = records.filter(
+                Q(candidate__full_name__icontains=search_params) | 
+                Q(candidate__email1__icontains=search_params) | 
+                Q(candidate__email2__icontains=search_params) | 
+                Q(candidate__company_name__icontains=search_params) | 
                 Q(candidate__headline__icontains=search_params) | 
                 Q(candidate__current_position__icontains=search_params) | 
                 Q(candidate__person_skills__icontains=search_params) |
