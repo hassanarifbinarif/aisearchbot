@@ -148,10 +148,6 @@ def reset_password(request):
 def dashboard(request):
     context={}
     context['active_sidebar'] = 'dashboard'
-    loc = LocationDetails.objects.filter(department_name__icontains='haute-garonne')
-    for lo in loc:
-        print(lo)
-    # print(loc)
     return render(request, 'dashboard/listing.html', context)
 
 
@@ -604,7 +600,7 @@ from django.db.models.functions import Lower
 def search_profile(request):
     context = {}
     if request.method == 'POST':
-        keywords = request.POST.get('keywords').split()
+        # keywords = request.POST.get('keywords').split()
         user = request.POST.get('user_id', None)
         
         try:
@@ -660,8 +656,8 @@ def search_profile(request):
             normalized_city_labels = []
             hyphenated_city_labels = []
             for label in city_labels:
-                normalized_city_labels.append(label.replace('-', ' '))
-                hyphenated_city_labels.append(label.replace(' ', '-'))
+                normalized_city_labels.append(label.replace('-', ' ').lower())
+                hyphenated_city_labels.append(label.replace(' ', '-').lower())
 
             records = records.annotate(personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
             records = records.filter(
@@ -796,21 +792,57 @@ def get_favourite_profiles(request):
     if request.method == 'POST':
         try:
             query_dict = json.loads(request.body)
-            print(query_dict)
             user_id = query_dict.get('user_id')
-            search_fields = [
-                'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
-                'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
-                'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
-                'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
-                'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
-                'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
-                'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
-                'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
-            ]
 
             records = ProfileVisibilityToggle.objects.select_related('candidate').filter(search_user_id=int(user_id), is_favourite=True).order_by('-id')
             page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+            
+            normalized_location_string = search_params.replace('-', ' ')
+            hyphenated_location_string = search_params.replace(' ', '-')
+            matching_locations = LocationDetails.objects.filter(
+                Q(region_name__icontains=search_params) | Q(region_name__icontains=normalized_location_string) | 
+                Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=search_params) |
+                Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
+            )
+            city_labels = matching_locations.values_list('label', flat=True)
+            city_codes = matching_locations.values_list('city_code', flat=True)
+
+            normalized_city_labels = []
+            hyphenated_city_labels = []
+            for label in city_labels:
+                normalized_city_labels.append(label.replace('-', ' ').lower())
+                hyphenated_city_labels.append(label.replace(' ', '-').lower())
+            
+            records = records.annotate(personCity=Lower('candidate__person_city'), personState=Lower('candidate__person_state'), personCountry=Lower('candidate__person_country'))
+
+            records = records.filter(
+                Q(candidate__headline__icontains=search_params) | 
+                Q(candidate__current_position__icontains=search_params) | 
+                Q(candidate__person_skills__icontains=search_params) |
+                Q(personCity__icontains=search_params) |
+                Q(personState__icontains=search_params) |
+                Q(personCountry__icontains=search_params) |
+                Q(personCity__icontains=normalized_location_string) |
+                Q(personState__icontains=normalized_location_string) |
+                Q(personCountry__icontains=normalized_location_string) |
+                Q(personCity__icontains=hyphenated_location_string) |
+                Q(personState__icontains=hyphenated_location_string) |
+                Q(personCountry__icontains=hyphenated_location_string) |
+                Q(personCity__in=city_labels) |
+                Q(personState__in=city_labels) |
+                Q(personCountry__in=city_labels) |
+                Q(personCity__in=normalized_city_labels) |
+                Q(personState__in=normalized_city_labels) |
+                Q(personCountry__in=normalized_city_labels) |
+                Q(personCity__in=hyphenated_city_labels) |
+                Q(personState__in=hyphenated_city_labels) |
+                Q(personCountry__in=hyphenated_city_labels) |
+                Q(personCity__in=city_codes) |
+                Q(personState__in=city_codes) |
+                Q(personCountry__in=city_codes)
+            )
+
             paginator = Paginator(records, 20)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
