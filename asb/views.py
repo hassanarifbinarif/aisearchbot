@@ -383,6 +383,8 @@ def import_file_data(request):
                     profile_data = {}
                     for column_name_in_df, field_name_in_model in column_map.items():
                         value = row[column_name_in_df]
+                        if field_name_in_model == 'person_skills' and value:
+                            value = value.split(',')
                         if value == '':
                             value = None
                         profile_data[field_name_in_model] = value
@@ -406,23 +408,6 @@ def import_file_data(request):
                         del duplicate_data['id']
                     DuplicateProfiles.objects.update_or_create(email1=duplicate_data['email1'], defaults=duplicate_data)
                     
-                    # if profile_data['email1'] in existing_emails:
-                    #     original_profile = CandidateProfiles.objects.get(email1=profile_data['email1'])
-                    #     duplicate_instances.append(DuplicateProfiles(original_profile=original_profile, **profile_data))
-                    # else:
-                    #     new_instances.append(CandidateProfiles(**profile_data))
-                
-                # with transaction.atomic():
-                #     CandidateProfiles.objects.bulk_create(new_instances)
-                #     DuplicateProfiles.objects.bulk_create(duplicate_instances)
-
-                # instances_to_create = [
-                #     CandidateProfiles(**{field_name_in_model: row[column_name_in_df] for column_name_in_df, field_name_in_model in column_map.items()})
-                #     for index, row in df.iterrows()
-                # ]
-                
-                # Use bulk_create to create objects efficiently
-                # CandidateProfiles.objects.bulk_create(instances_to_create)
                 return JsonResponse({'success': True, 'message': 'Data uploaded', 'is_duplicate': is_duplicate}, status=200)
             return JsonResponse({'success': False, 'message': 'File not found'}, status=400)
         except Exception as e:
@@ -454,10 +439,13 @@ def export_file_data(request):
     df = pd.DataFrame(list(queryset))
     df = df.rename(columns=replacements, inplace=False)
     
-    # data = df.to_dict(orient='records')
-    # return JsonResponse(data, safe=False)
+    # Convert person_skills from list to comma-separated string
+    if 'person_skills' in df.columns:
+        df['person_skills'] = df['person_skills'].apply(lambda x: ','.join(x) if isinstance(x, list) else x)
 
-    # ----------------------------------------------------
+     # data = df.to_dict(orient='records')
+    # return JsonResponse(data, safe=False)
+    
     # Remove indexes
     df = df.reset_index(drop=True)
 

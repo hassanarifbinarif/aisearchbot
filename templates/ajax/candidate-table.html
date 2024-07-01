@@ -36,8 +36,10 @@
             <td title="{{item.tags}}">{{item.tags | default:"--"}}</td>
             <td class="skills-row">
                 <div class="skills-cotainer">
-                    {% for skills in item.person_skills|values_from_comma_separated_string %}
+                    {% for skills in item.person_skills %}
                     <span>{{skills}}</span>
+                    {% empty %}
+                    --
                     {% endfor %}
                 </div>
             </td>

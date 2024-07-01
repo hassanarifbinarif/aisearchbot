@@ -5,6 +5,7 @@ from django.contrib.auth.base_user import BaseUserManager
 from django.utils.translation import gettext as _
 from django.dispatch import receiver
 from django.conf import settings
+from django.contrib.postgres.fields import ArrayField
 
 
 class CustomUserManager(BaseUserManager):
@@ -84,7 +85,8 @@ class CandidateProfiles(models.Model):
     person_country = models.CharField(max_length=100, null=True, blank=True)
     person_industry = models.CharField(max_length=150, null=True, blank=True)
     tags = models.TextField(null=True, blank=True)
-    person_skills = models.TextField(null=True, blank=True)
+    # person_skills = models.TextField(null=True, blank=True)
+    person_skills = ArrayField(models.CharField(max_length=100), blank=True, null=True)
     education_experience = models.TextField(null=True, blank=True)
     company_website = models.URLField(max_length=2000, null=True, blank=True)
     email1 = models.EmailField(null=True, blank=True)
@@ -131,7 +133,8 @@ class DuplicateProfiles(models.Model):
     person_country = models.CharField(max_length=100, null=True, blank=True)
     person_industry = models.CharField(max_length=150, null=True, blank=True)
     tags = models.TextField(null=True, blank=True)
-    person_skills = models.TextField(null=True, blank=True)
+    # person_skills = models.TextField(null=True, blank=True)
+    person_skills = ArrayField(models.CharField(max_length=100), blank=True, null=True)
     education_experience = models.TextField(null=True, blank=True)
     company_website = models.URLField(max_length=2000, null=True, blank=True)
     email1 = models.EmailField(null=True, blank=True)
