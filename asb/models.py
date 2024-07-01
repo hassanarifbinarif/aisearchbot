@@ -6,6 +6,7 @@ from django.utils.translation import gettext as _
 from django.dispatch import receiver
 from django.conf import settings
 from django.contrib.postgres.fields import ArrayField
+from django.db.models import Func, Value, Q
 
 
 class CustomUserManager(BaseUserManager):
@@ -73,6 +74,24 @@ class SharedUsers(models.Model):
     belongs_to = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     
 
+class CandidateProfilesQuerySet(models.QuerySet):
+    def case_insensitive_skills_search(self, search_values):
+        search_values = [value.lower() for value in search_values]
+        conditions = Q()
+        
+        for value in search_values:
+            conditions |= Q(person_skills__icontains=value)
+        
+        return self.filter(conditions)
+
+class CandidateProfilesManager(models.Manager):
+    def get_queryset(self):
+        return CandidateProfilesQuerySet(self.model, using=self._db)
+
+    def case_insensitive_skills_search(self, search_values):
+        return self.get_queryset().case_insensitive_skills_search(search_values)
+
+
 class CandidateProfiles(models.Model):
     full_name = models.CharField(max_length=100, null=True, blank=True)
     first_name = models.CharField(max_length=50, null=True, blank=True)
@@ -112,6 +131,8 @@ class CandidateProfiles(models.Model):
     company_linkedin_url = models.URLField(max_length=2000, null=True, blank=True)
     person_image_url = models.URLField(max_length=2000, null=True, blank=True)
     company_logo_url = models.URLField(max_length=2000, null=True, blank=True)
+
+    objects = CandidateProfilesManager()
 
     def save(self, *args, **kwargs):
         if self.company_size_from == '':

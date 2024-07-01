@@ -21,7 +21,7 @@ from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models.functions import Cast
+from django.db.models.functions import Lower
 
 # authentication views
 def super_admin_login(request):
@@ -582,34 +582,23 @@ def resolve_conflict(request):
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
-from django.db.models.functions import Lower
-
 @csrf_exempt
 def search_profile(request):
     context = {}
     if request.method == 'POST':
-        # keywords = request.POST.get('keywords').split()
-        user = request.POST.get('user_id', None)
-        
         try:
-            query_dict = request.POST
-            print(query_dict)
-            key_with_on_value = query_dict.get('search_by_filter', 'Phone or Email')
-            # for key, value in query_dict.items():
-            #     if value == 'on':
-            #         key_with_on_value = key
-            #         break
+            query_dict = json.loads(request.body)
+            user = query_dict.get('user_id', None)
+            
             keywords = query_dict.get('keywords', '')
             location = query_dict.get('location', '')
-            selected_filter = query_dict.get('search_by_filter', '')
             company_size_from = query_dict.get('size_from', None)
             company_size_to = query_dict.get('size_to', None)
             
             if company_size_from == "" or company_size_from == "null":
                 company_size_from = None
             if company_size_to == "" or company_size_to == "null":
-                company_size_to = None 
-            # search_id = query_dict.get('search_id', None)
+                company_size_to = None
             
             search_fields = [
                 'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
@@ -624,12 +613,10 @@ def search_profile(request):
 
             records = CandidateProfiles.objects.all().order_by('-id')
 
-            if keywords:
-                for keyword in keywords:
-                    records = records.filter(
-                        Q(headline__icontains=keyword) |
-                        Q(current_position__icontains=keyword) |
-                        Q(person_skills__icontains=keyword)
+            records = records.annotate(lower_headline=Lower('headline'), lower_current_position=Lower('current_position'), lower_company_name=Lower('company_name'), personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
+            records = records.filter(
+                        Q(headline__icontains=keywords) |
+                        Q(current_position__icontains=keywords)
                     )
             normalized_location_string = location.replace('-', ' ')
             hyphenated_location_string = location.replace(' ', '-')
@@ -647,7 +634,6 @@ def search_profile(request):
                 normalized_city_labels.append(label.replace('-', ' ').lower())
                 hyphenated_city_labels.append(label.replace(' ', '-').lower())
 
-            records = records.annotate(personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
             records = records.filter(
                     Q(personCity__icontains=location) |
                     Q(personState__icontains=location) |
@@ -670,24 +656,56 @@ def search_profile(request):
                     Q(personCity__in=city_codes) |
                     Q(personState__in=city_codes) |
                     Q(personCountry__in=city_codes)
+                )            
+
+            records = records.case_insensitive_skills_search(query_dict.get('skills_list', []))
+            
+            lower_job_titles = []
+            for label in query_dict.get('jobs_title_list', []):
+                lower_job_titles.append(label.lower())
+            
+            if len(lower_job_titles) > 0:
+                records = records.filter(
+                    Q(lower_headline__in=lower_job_titles) |
+                    Q(lower_current_position__in=lower_job_titles)
                 )
 
-            # if location:
-            #     records = records.filter(
-            #         Q(person_city__icontains=location) |
-            #         Q(person_state__icontains=location) |
-            #         Q(person_country__icontains=location)
-            #     )
-                
-            if selected_filter == 'Email':
-                records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False))        
+            lower_company_name = []
+            for label in query_dict.get('company_name_list', []):
+                lower_company_name.append(label.replace('-', ' ').lower())
             
-            if selected_filter == 'Phone':
-                records = records.filter(phone2__isnull=False)
+            if len(lower_company_name) > 0:
+                records = records.filter(Q(lower_company_name__in=lower_company_name))
+
+            contact_details = query_dict.get('contact_details', [])
+            if len(contact_details) > 0:
+                query = Q()
+                field_mapping = {
+                    'email1': 'email1',
+                    'email2': 'email2',
+                    'phone1': 'phone1',
+                    'phone2': 'phone2'
+                }
+
+                operation = query_dict.get('contact_details_radio', 'or')
+                for field in contact_details:
+                    print('here', field)
+                    if field in field_mapping:
+                        q = Q(**{f"{field_mapping[field]}__isnull": False})
+                        if operation == 'or':
+                            query |= q
+                        elif operation == 'and':
+                            query &= q
+                records = records.filter(query)
+                # if selected_filter == 'Email':
+                #     records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False))        
                 
-            if selected_filter == 'Phone or Email':
-                records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False) | Q(phone2__isnull=False))
-            
+                # if selected_filter == 'Phone':
+                #     records = records.filter(phone2__isnull=False)
+                    
+                # if selected_filter == 'Phone or Email':
+                #     records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False) | Q(phone2__isnull=False))
+                
             if company_size_from is not None:
                 company_size_from = int(company_size_from)
             else:
@@ -702,10 +720,12 @@ def search_profile(request):
                 filter_conditions &= (Q(company_size_to__lte=company_size_to))
 
             records = records.filter(filter_conditions)
-            # records = annotated_queryset.filter(
-            #     Q(company_size_from_int__gte=company_size_from) | Q(company_size_from_int__isnull=True),
-            #     Q(company_size_to_int__lte=company_size_to) | Q(company_size_to_int__isnull=True)
-            # )
+
+            records = records.filter(
+                Q(full_name__icontains=query_dict.get('contact_name', '')) |
+                Q(first_name__icontains=query_dict.get('contact_name', '')) |
+                Q(last_name__icontains=query_dict.get('contact_name', ''))
+            )
             
             page_number = query_dict.get("page", 1)
             paginator = Paginator(records, 20)
