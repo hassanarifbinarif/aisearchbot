@@ -4,7 +4,7 @@ import operator
 import pandas as pd
 from django.template import loader
 from collections import Counter
-from django.db.models import Q, Case, When, IntegerField
+from django.db.models import Q, F
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
 from aisearchbot.helpers import send_verification_code_email, send_account_credentials_email
@@ -613,7 +613,7 @@ def search_profile(request):
 
             records = CandidateProfiles.objects.all().order_by('-id')
 
-            records = records.annotate(lower_headline=Lower('headline'), lower_current_position=Lower('current_position'), lower_company_name=Lower('company_name'), personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
+            records = records.annotate(lower_company_name=Lower('company_name'), personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
             records = records.filter(
                         Q(headline__icontains=keywords) |
                         Q(current_position__icontains=keywords)
@@ -660,22 +660,21 @@ def search_profile(request):
 
             records = records.case_insensitive_skills_search(query_dict.get('skills_list', []))
             
-            lower_job_titles = []
-            for label in query_dict.get('jobs_title_list', []):
-                lower_job_titles.append(label.lower())
-            
-            if len(lower_job_titles) > 0:
-                records = records.filter(
-                    Q(lower_headline__in=lower_job_titles) |
-                    Q(lower_current_position__in=lower_job_titles)
-                )
+            job_titles = query_dict.get('jobs_title_list', [])
+            if len(job_titles) > 0:
+                job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
+                job_query = job_title_queries.pop()
+                for q in job_title_queries:
+                    job_query |= q
+                records = records.filter(job_query)
 
-            lower_company_name = []
-            for label in query_dict.get('company_name_list', []):
-                lower_company_name.append(label.replace('-', ' ').lower())
-            
-            if len(lower_company_name) > 0:
-                records = records.filter(Q(lower_company_name__in=lower_company_name))
+            company_names = query_dict.get('company_name_list', [])
+            if len(company_names) > 0:
+                company_name_queries = [Q(company_name__icontains=term) for term in company_names]
+                company_name_query = company_name_queries.pop()
+                for q in company_name_queries:
+                    company_name_query |= q
+                records = records.filter(company_name_query)
 
             contact_details = query_dict.get('contact_details', [])
             if len(contact_details) > 0:
@@ -686,10 +685,8 @@ def search_profile(request):
                     'phone1': 'phone1',
                     'phone2': 'phone2'
                 }
-
                 operation = query_dict.get('contact_details_radio', 'or')
                 for field in contact_details:
-                    print('here', field)
                     if field in field_mapping:
                         q = Q(**{f"{field_mapping[field]}__isnull": False})
                         if operation == 'or':
@@ -697,29 +694,29 @@ def search_profile(request):
                         elif operation == 'and':
                             query &= q
                 records = records.filter(query)
-                # if selected_filter == 'Email':
-                #     records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False))        
                 
-                # if selected_filter == 'Phone':
-                #     records = records.filter(phone2__isnull=False)
-                    
-                # if selected_filter == 'Phone or Email':
-                #     records = records.filter(Q(email1__isnull=False) | Q(email2__isnull=False) | Q(phone2__isnull=False))
-                
-            if company_size_from is not None:
-                company_size_from = int(company_size_from)
-            else:
-                company_size_from = 0
-            if company_size_to is not None:
-                company_size_to = int(company_size_to)
-            
-            filter_conditions = Q()
-            if company_size_from is not None:
-                filter_conditions &= (Q(company_size_from__gte=company_size_from))
-            if company_size_to is not None:
-                filter_conditions &= (Q(company_size_to__lte=company_size_to))
+            company_size_ranges = query_dict.get('company_size_ranges', [])
+            company_size_query = Q()
+            for range in company_size_ranges:
+                size_from = range.get('from')
+                size_to = range.get('to')
 
-            records = records.filter(filter_conditions)
+                try:
+                    size_from = int(size_from)
+                except (ValueError, TypeError):
+                    continue
+
+                try:
+                    size_to = int(size_to)
+                except (ValueError, TypeError):
+                    size_to = None
+
+                if size_to is None:
+                    company_size_query |= Q(company_size_from__gte=size_from)
+                else:
+                    company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
+            valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
+            records = records.filter(company_size_query & valid_data_query)
 
             records = records.filter(
                 Q(full_name__icontains=query_dict.get('contact_name', '')) |
