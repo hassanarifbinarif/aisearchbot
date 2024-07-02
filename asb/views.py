@@ -696,27 +696,28 @@ def search_profile(request):
                 records = records.filter(query)
                 
             company_size_ranges = query_dict.get('company_size_ranges', [])
-            company_size_query = Q()
-            for range in company_size_ranges:
-                size_from = range.get('from')
-                size_to = range.get('to')
+            if len(company_size_ranges) > 0:
+                company_size_query = Q()
+                for range in company_size_ranges:
+                    size_from = range.get('from')
+                    size_to = range.get('to')
 
-                try:
-                    size_from = int(size_from)
-                except (ValueError, TypeError):
-                    continue
+                    try:
+                        size_from = int(size_from)
+                    except (ValueError, TypeError):
+                        continue
 
-                try:
-                    size_to = int(size_to)
-                except (ValueError, TypeError):
-                    size_to = None
+                    try:
+                        size_to = int(size_to)
+                    except (ValueError, TypeError):
+                        size_to = None
 
-                if size_to is None:
-                    company_size_query |= Q(company_size_from__gte=size_from)
-                else:
-                    company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
-            valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
-            records = records.filter(company_size_query & valid_data_query)
+                    if size_to is None:
+                        company_size_query |= Q(company_size_from__gte=size_from)
+                    else:
+                        company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
+                valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
+                records = records.filter(company_size_query & valid_data_query)
 
             records = records.filter(
                 Q(full_name__icontains=query_dict.get('contact_name', '')) |
