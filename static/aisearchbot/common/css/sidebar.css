@@ -8,8 +8,8 @@
     position: fixed;
     left: 0;
     top: 0px;
-    border-top-right-radius: 30px;
-    border-bottom-right-radius: 30px;
+    border-top-right-radius: 11px;
+    border-bottom-right-radius: 11px;
     padding: 30px 0px;
     overflow-y: auto;
     direction: rtl;
@@ -102,8 +102,8 @@
     background-color: #F1F4F5;
     outline: none;
     position: relative;
-    border-top-left-radius: 25px;
-    border-bottom-left-radius: 25px;
+    border-top-left-radius: 11px;
+    border-bottom-left-radius: 11px;
 }
 
 .sidebar-link.active .link-content > svg path {
@@ -144,7 +144,7 @@
     right: 0;
     height: 35px;
     width: 35px;
-    border-bottom-right-radius: 18px;
+    border-bottom-right-radius: 8px;
     box-shadow: 0 20px 0 0 #F1F4F5;
 }
 
@@ -156,7 +156,7 @@
     right: 0;
     height: 35px;
     width: 35px;
-    border-top-right-radius: 18px;
+    border-top-right-radius: 8px;
     box-shadow: 0 -20px 0 0 #F1F4F5;
 }
 
