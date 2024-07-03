@@ -936,6 +936,145 @@ def get_favourite_profiles(request):
     return JsonResponse(context)
 
 
+@csrf_exempt
+def get_opened_profiles(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
+
+            query = Q(show_email1=True) | Q(show_email2=True) | Q(show_phone1=True) | Q(show_phone2=True)
+            records = ProfileVisibilityToggle.objects.select_related('candidate').filter(query, search_user_id=int(user_id)).order_by('-id')
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+            
+            normalized_location_string = search_params.replace('-', ' ')
+            hyphenated_location_string = search_params.replace(' ', '-')
+            matching_locations = LocationDetails.objects.filter(
+                Q(region_name__icontains=search_params) | Q(region_name__icontains=normalized_location_string) | 
+                Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=search_params) |
+                Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
+            )
+            city_labels = matching_locations.values_list('label', flat=True)
+            city_codes = matching_locations.values_list('city_code', flat=True)
+
+            normalized_city_labels = []
+            hyphenated_city_labels = []
+            for label in city_labels:
+                normalized_city_labels.append(label.replace('-', ' ').lower())
+                hyphenated_city_labels.append(label.replace(' ', '-').lower())
+            
+            records = records.annotate(personCity=Lower('candidate__person_city'), personState=Lower('candidate__person_state'), personCountry=Lower('candidate__person_country'))
+
+            records = records.filter(
+                Q(candidate__full_name__icontains=search_params) | 
+                Q(candidate__email1__icontains=search_params) | 
+                Q(candidate__email2__icontains=search_params) | 
+                Q(candidate__company_name__icontains=search_params) | 
+                Q(candidate__headline__icontains=search_params) | 
+                Q(candidate__current_position__icontains=search_params) | 
+                Q(candidate__person_skills__icontains=search_params) |
+                Q(personCity__icontains=search_params) |
+                Q(personState__icontains=search_params) |
+                Q(personCountry__icontains=search_params) |
+                Q(personCity__icontains=normalized_location_string) |
+                Q(personState__icontains=normalized_location_string) |
+                Q(personCountry__icontains=normalized_location_string) |
+                Q(personCity__icontains=hyphenated_location_string) |
+                Q(personState__icontains=hyphenated_location_string) |
+                Q(personCountry__icontains=hyphenated_location_string) |
+                Q(personCity__in=city_labels) |
+                Q(personState__in=city_labels) |
+                Q(personCountry__in=city_labels) |
+                Q(personCity__in=normalized_city_labels) |
+                Q(personState__in=normalized_city_labels) |
+                Q(personCountry__in=normalized_city_labels) |
+                Q(personCity__in=hyphenated_city_labels) |
+                Q(personState__in=hyphenated_city_labels) |
+                Q(personCountry__in=hyphenated_city_labels) |
+                Q(personCity__in=city_codes) |
+                Q(personState__in=city_codes) |
+                Q(personCountry__in=city_codes)
+            )
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+
+            page_obj_list = []
+            for item in page_obj.object_list:
+                candidate_dict = {
+                    'id': item.candidate.id,
+                    'full_name': item.candidate.full_name,
+                    'first_name': item.candidate.first_name,
+                    'last_name': item.candidate.last_name,
+                    'headline': item.candidate.headline,
+                    'current_position': item.candidate.current_position,
+                    'company_name': item.candidate.company_name,
+                    'person_city': item.candidate.person_city,
+                    'person_state': item.candidate.person_state,
+                    'person_country': item.candidate.person_country,
+                    'person_industry': item.candidate.person_industry,
+                    'tags': item.candidate.tags,
+                    'person_skills': item.candidate.person_skills,
+                    'education_experience': item.candidate.education_experience,
+                    'company_website': item.candidate.company_website,
+                    'email1': item.candidate.email1,
+                    'email2': item.candidate.email2,
+                    'phone1': item.candidate.phone1,
+                    'phone2': item.candidate.phone2,
+                    'person_linkedin_url': item.candidate.person_linkedin_url,
+                    'company_size_from': item.candidate.company_size_from,
+                    'company_size_to': item.candidate.company_size_to,
+                    'current_position_2': item.candidate.current_position_2,
+                    'current_company_2': item.candidate.current_company_2,
+                    'previous_position_2': item.candidate.previous_position_2,
+                    'previous_company_2': item.candidate.previous_company_2,
+                    'previous_position_3': item.candidate.previous_position_3,
+                    'previous_company_3': item.candidate.previous_company_3,
+                    'company_city': item.candidate.company_city,
+                    'company_state': item.candidate.company_state,
+                    'company_country': item.candidate.company_country,
+                    'person_angellist_url': item.candidate.person_angellist_url,
+                    'person_crunchbase_url': item.candidate.person_crunchbase_url,
+                    'person_twitter_url': item.candidate.person_twitter_url,
+                    'person_facebook_url': item.candidate.person_facebook_url,
+                    'company_linkedin_url': item.candidate.company_linkedin_url,
+                    'person_image_url': item.candidate.person_image_url,
+                    'company_logo_url': item.candidate.company_logo_url
+                }
+                candidate_dict['show_email1'] = item.show_email1
+                candidate_dict['show_email2'] = item.show_email2
+                candidate_dict['show_phone1'] = item.show_phone1
+                candidate_dict['show_phone2'] = item.show_phone2
+                candidate_dict['is_favourite'] = item.is_favourite
+                candidate_dict['is_opened'] = False
+                if candidate_dict['show_email1'] or candidate_dict['show_email2'] or candidate_dict['show_phone1'] or candidate_dict['show_phone2']:
+                        candidate_dict['is_opened'] = True
+                page_obj_list.append(candidate_dict)
+            
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = records.count()
+            context['records'] = page_obj_list
+            return JsonResponse(context, status=200)
+            
+
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happed!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
 # Temporary view to delete all candidates
 
 @super_admin_required
