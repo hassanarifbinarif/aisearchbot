@@ -726,7 +726,8 @@ def search_profile(request):
             )
             
             page_number = query_dict.get("page", 1)
-            paginator = Paginator(records, 20)
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
             context['total_pages'] = paginator.num_pages
@@ -740,6 +741,7 @@ def search_profile(request):
                 item['show_phone1'] = False
                 item['show_phone2'] = False
                 item['is_favourite'] = False
+                item['is_opened'] = False
                 try:
                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
                     item['show_email1'] = profile_visibility.show_email1
@@ -747,9 +749,13 @@ def search_profile(request):
                     item['show_phone1'] = profile_visibility.show_phone1
                     item['show_phone2'] = profile_visibility.show_phone2
                     item['is_favourite'] = profile_visibility.is_favourite
+                    if item['show_email1'] or item['show_email2'] or item['show_phone1'] or item['show_phone2']:
+                        item['is_opened'] = True
                 except Exception as e:
                     print(e)
             
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
             context['records_count'] = records.count()
             context['records'] = page_obj
@@ -853,7 +859,8 @@ def get_favourite_profiles(request):
                 Q(personCountry__in=city_codes)
             )
 
-            paginator = Paginator(records, 20)
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
             context['total_pages'] = paginator.num_pages
@@ -907,9 +914,13 @@ def get_favourite_profiles(request):
                 candidate_dict['show_phone1'] = item.show_phone1
                 candidate_dict['show_phone2'] = item.show_phone2
                 candidate_dict['is_favourite'] = item.is_favourite
-                
+                candidate_dict['is_opened'] = False
+                if candidate_dict['show_email1'] or candidate_dict['show_email2'] or candidate_dict['show_phone1'] or candidate_dict['show_phone2']:
+                        candidate_dict['is_opened'] = True
                 page_obj_list.append(candidate_dict)
             
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
             context['records_count'] = records.count()
             context['records'] = page_obj_list
