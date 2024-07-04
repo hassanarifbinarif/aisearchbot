@@ -140,6 +140,12 @@ class CandidateProfiles(models.Model):
         if self.company_size_to == '':
             self.company_size_to = None
         super(CandidateProfiles, self).save(*args, **kwargs)
+    
+    def is_saved_for_user(record_id, user_id):
+        return SavedListProfiles.objects.filter(
+            list__list_user_id=user_id,
+            profile_id=record_id
+        ).exists()
 
 
 class DuplicateProfiles(models.Model):
@@ -209,6 +215,25 @@ class LocationDetails(models.Model):
 
     def __str__(self):
         return self.label
+
+
+class SavedLists(models.Model):
+    class Types(models.TextChoices):
+        RECRUITMENT = 'recruitment', _('Recruitment')
+        PROSPECTION = 'prospection', _('Prospection')
+
+    list_user_id = models.IntegerField()
+    name = models.CharField(max_length=100)
+    list_type = models.CharField(max_length=20, default=Types.RECRUITMENT.value, choices=Types.choices)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class SavedListProfiles(models.Model):
+    list = models.ForeignKey(SavedLists, on_delete=models.PROTECT)
+    profile = models.ForeignKey(CandidateProfiles, on_delete=models.PROTECT)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
 
 
 # Signals

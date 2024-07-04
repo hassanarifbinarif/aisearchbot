@@ -16,7 +16,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, User, OTP, SharedUsers
+from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
@@ -742,6 +742,7 @@ def search_profile(request):
                 item['show_phone2'] = False
                 item['is_favourite'] = False
                 item['is_opened'] = False
+                item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
                 try:
                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
                     item['show_email1'] = profile_visibility.show_email1
@@ -1139,6 +1140,120 @@ def location_data_upload(request):
         except Exception as e:
             print(e)
     return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+
+@csrf_exempt
+def add_list(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            list_name = data.get('name', '')
+            user_id = data.get('user_id', None)
+            list_type = data.get('list_type', 'recruitment')
+            if list_name == '':
+                return JsonResponse({'success': False, 'message': 'List name is required'}, status=400)
+            elif user_id == None:
+                return JsonResponse({'success': False, 'message': 'User id is required'}, status=400)
+            else:
+                SavedLists.objects.create(list_user_id=user_id, name=list_name, list_type=list_type)
+            return JsonResponse({'success': True, 'message': 'List created'}, status=201)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def get_recruitment_list(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
+
+            records = SavedLists.objects.filter(list_user_id=int(user_id), list_type=SavedLists.Types.RECRUITMENT).order_by('-id')
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = records.count()
+            context['records'] = list(page_obj.object_list.values())
+            return JsonResponse(context, status=200)
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happed!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
+@csrf_exempt
+def get_prospection_list(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
+
+            records = SavedLists.objects.filter(list_user_id=int(user_id), list_type=SavedLists.Types.PROSPECTION).order_by('-id')
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = records.count()
+            context['records'] = list(page_obj.object_list.values())
+            return JsonResponse(context, status=200)
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happed!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
+@csrf_exempt
+def add_record_in_list(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            record_id = data.get('record_id', None)
+            user_id = data.get('user_id', None)
+            list_type = data.get('list_type', 'recruitment')
+            if list_type == 'recruitment':
+                list_id = data.get('recruitment')
+            else:
+                list_id = data.get('prospection')
+            SavedListProfiles.objects.create(
+                list_id = int(list_id),
+                profile_id = int(record_id)
+            )
+            return JsonResponse({'success': True, 'message': 'Profile added to the list'}, status=201)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
 # Temporary view to delete all location data

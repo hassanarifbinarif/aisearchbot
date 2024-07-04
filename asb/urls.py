@@ -44,5 +44,12 @@ urlpatterns = [
     path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
 
     path('upload-location-data/', views.location_data_upload, name='location_data_upload'),
-    path('del-location-data/', views.delete_all_cities_data, name='delete_all_cities_data')
+    path('del-location-data/', views.delete_all_cities_data, name='delete_all_cities_data'),
+
+    #saved lists
+    path('add-list/', views.add_list, name='add_list'),
+    path('get-recruitment-list/', views.get_recruitment_list, name='get_recruitment_list'),
+    path('get-prospection-list/', views.get_prospection_list, name='get_prospection_list'),
+
+    path('add-record-in-list/', views.add_record_in_list, name='add_record_in_list'),
 ]
