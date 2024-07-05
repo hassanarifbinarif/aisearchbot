@@ -21,6 +21,7 @@ from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models.functions import Lower
+from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
 
 # authentication views
 def super_admin_login(request):
@@ -581,12 +582,89 @@ def resolve_conflict(request):
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
+
+def filter_location(location, records, allow_null_first_iteration=False):
+    normalized_location_string = location.replace('-', ' ')
+    hyphenated_location_string = location.replace(' ', '-')
+    matching_locations = LocationDetails.objects.filter(
+        Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | 
+        Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=location) |
+        Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
+    )
+    city_labels = matching_locations.values_list('label', flat=True)
+    city_codes = matching_locations.values_list('city_code', flat=True)
+
+    normalized_city_labels = []
+    hyphenated_city_labels = []
+    for label in city_labels:
+        normalized_city_labels.append(label.replace('-', ' ').lower())
+        hyphenated_city_labels.append(label.replace(' ', '-').lower())
+
+    location_filter_query = Q(personCity__icontains=location) | Q(personState__icontains=location) | Q(personCountry__icontains=location) | Q(personCity__icontains=normalized_location_string) | Q(personState__icontains=normalized_location_string) |Q(personCountry__icontains=normalized_location_string) | Q(personCity__icontains=hyphenated_location_string) | Q(personState__icontains=hyphenated_location_string) | Q(personCountry__icontains=hyphenated_location_string) | Q(personCity__in=city_labels) | Q(personState__in=city_labels) | Q(personCountry__in=city_labels) | Q(personCity__in=normalized_city_labels) | Q(personState__in=normalized_city_labels) | Q(personCountry__in=normalized_city_labels) | Q(personCity__in=hyphenated_city_labels) | Q(personState__in=hyphenated_city_labels) | Q(personCountry__in=hyphenated_city_labels) | Q(personCity__in=city_codes) | Q(personState__in=city_codes) | Q(personCountry__in=city_codes)
+
+    if allow_null_first_iteration:
+        location_filter_query |= Q(personCity__isnull=True) | Q(personState__isnull=True) | Q(personCountry__isnull=True)
+    
+    records = records.filter(location_filter_query)
+
+    return records
+
+
+def update_country(records, location):
+    if ',' in location:
+        words = [word.strip() for word in location.split(',')]
+        for i, word in enumerate(words):
+            normalized_location_string = word.replace('-', ' ')
+            hyphenated_location_string = word.replace(' ', '-')
+            for record in records:
+                if not record['person_country']:
+                    matching_location = LocationDetails.objects.filter(
+                        Q(city_code__iexact=record['person_city']) |
+                        Q(city_code__iexact=record['person_state']) |
+                        Q(city_code__iexact=location) |
+                        Q(city_code__iexact=normalized_location_string) |
+                        Q(city_code__iexact=hyphenated_location_string) |
+                        Q(label__iexact=record['person_city']) |
+                        Q(label__iexact=record['person_state']) |
+                        Q(label__iexact=location) |
+                        Q(label__iexact=normalized_location_string) |
+                        Q(label__iexact=hyphenated_location_string)
+                    ).first()
+                    if matching_location:
+                        record['person_country'] = matching_location.region_name.title()
+                    else:
+                        record['person_country'] = record['person_state']
+    else:
+        normalized_location_string = location.replace('-', ' ')
+        hyphenated_location_string = location.replace(' ', '-')
+        for record in records:
+            if not record['person_country']:
+                matching_location = LocationDetails.objects.filter(
+                    Q(city_code__iexact=record['person_city']) |
+                    Q(city_code__iexact=record['person_state']) |
+                    Q(city_code__iexact=location) |
+                    Q(city_code__iexact=normalized_location_string) |
+                    Q(city_code__iexact=hyphenated_location_string) |
+                    Q(label__iexact=record['person_city']) |
+                    Q(label__iexact=record['person_state']) |
+                    Q(label__iexact=location) |
+                    Q(label__iexact=normalized_location_string) |
+                    Q(label__iexact=hyphenated_location_string)
+                ).first()
+                if matching_location:
+                    record['person_country'] = matching_location.region_name.title()
+                else:
+                    record['person_country'] = record['person_state']
+    return records
+
+
 @csrf_exempt
 def search_profile(request):
     context = {}
     if request.method == 'POST':
         try:
             query_dict = json.loads(request.body)
+            # query_dict = {'keywords': '', 'location': 'Rhône, France', 'contact_details_radio': 'or', 'contact_name': '', 'size_from': 'null', 'size_to': 'null', 'skills_list': [], 'jobs_title_list': [], 'company_name_list': [], 'contact_details': [], 'company_size_ranges': [], 'page': 1, 'user_id': 2}
             user = query_dict.get('user_id', None)
             
             keywords = query_dict.get('keywords', '')
@@ -617,46 +695,55 @@ def search_profile(request):
                         Q(headline__icontains=keywords) |
                         Q(current_position__icontains=keywords)
                     )
-            normalized_location_string = location.replace('-', ' ')
-            hyphenated_location_string = location.replace(' ', '-')
-            matching_locations = LocationDetails.objects.filter(
-                Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | 
-                Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=location) |
-                Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
-            )
-            city_labels = matching_locations.values_list('label', flat=True)
-            city_codes = matching_locations.values_list('city_code', flat=True)
+            if ',' in location:
+                words = [word.strip() for word in location.split(',')]
+                words.reverse()
+                for i, word in enumerate(words):
+                    allow_null = (i == 0)
+                    normalized_location_string = word.replace('-', ' ')
+                    hyphenated_location_string = word.replace(' ', '-')
+                    records = filter_location(word, records, allow_null_first_iteration=allow_null)
+            else:
+                normalized_location_string = location.replace('-', ' ')
+                hyphenated_location_string = location.replace(' ', '-')
+                matching_locations = LocationDetails.objects.filter(
+                    Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | 
+                    Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=location) |
+                    Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
+                )
+                city_labels = matching_locations.values_list('label', flat=True)
+                city_codes = matching_locations.values_list('city_code', flat=True)
 
-            normalized_city_labels = []
-            hyphenated_city_labels = []
-            for label in city_labels:
-                normalized_city_labels.append(label.replace('-', ' ').lower())
-                hyphenated_city_labels.append(label.replace(' ', '-').lower())
+                normalized_city_labels = []
+                hyphenated_city_labels = []
+                for label in city_labels:
+                    normalized_city_labels.append(label.replace('-', ' ').lower())
+                    hyphenated_city_labels.append(label.replace(' ', '-').lower())
 
-            records = records.filter(
-                    Q(personCity__icontains=location) |
-                    Q(personState__icontains=location) |
-                    Q(personCountry__icontains=location) |
-                    Q(personCity__icontains=normalized_location_string) |
-                    Q(personState__icontains=normalized_location_string) |
-                    Q(personCountry__icontains=normalized_location_string) |
-                    Q(personCity__icontains=hyphenated_location_string) |
-                    Q(personState__icontains=hyphenated_location_string) |
-                    Q(personCountry__icontains=hyphenated_location_string) |
-                    Q(personCity__in=city_labels) |
-                    Q(personState__in=city_labels) |
-                    Q(personCountry__in=city_labels) |
-                    Q(personCity__in=normalized_city_labels) |
-                    Q(personState__in=normalized_city_labels) |
-                    Q(personCountry__in=normalized_city_labels) |
-                    Q(personCity__in=hyphenated_city_labels) |
-                    Q(personState__in=hyphenated_city_labels) |
-                    Q(personCountry__in=hyphenated_city_labels) |
-                    Q(personCity__in=city_codes) |
-                    Q(personState__in=city_codes) |
-                    Q(personCountry__in=city_codes)
-                )            
-
+                records = records.filter(
+                        Q(personCity__icontains=location) |
+                        Q(personState__icontains=location) |
+                        Q(personCountry__icontains=location) |
+                        Q(personCity__icontains=normalized_location_string) |
+                        Q(personState__icontains=normalized_location_string) |
+                        Q(personCountry__icontains=normalized_location_string) |
+                        Q(personCity__icontains=hyphenated_location_string) |
+                        Q(personState__icontains=hyphenated_location_string) |
+                        Q(personCountry__icontains=hyphenated_location_string) |
+                        Q(personCity__in=city_labels) |
+                        Q(personState__in=city_labels) |
+                        Q(personCountry__in=city_labels) |
+                        Q(personCity__in=normalized_city_labels) |
+                        Q(personState__in=normalized_city_labels) |
+                        Q(personCountry__in=normalized_city_labels) |
+                        Q(personCity__in=hyphenated_city_labels) |
+                        Q(personState__in=hyphenated_city_labels) |
+                        Q(personCountry__in=hyphenated_city_labels) |
+                        Q(personCity__in=city_codes) |
+                        Q(personState__in=city_codes) |
+                        Q(personCountry__in=city_codes)
+                    )
+            
             records = records.case_insensitive_skills_search(query_dict.get('skills_list', []))
             
             job_titles = query_dict.get('jobs_title_list', [])
@@ -754,24 +841,25 @@ def search_profile(request):
                 except Exception as e:
                     print(e)
             
-            for record in page_obj:
-                if not record['person_country']:
-                    matching_location = LocationDetails.objects.filter(
-                        Q(city_code__iexact=record['person_city']) |
-                        Q(city_code__iexact=record['person_state']) |
-                        Q(city_code__iexact=location) |
-                        Q(city_code__iexact=normalized_location_string) |
-                        Q(city_code__iexact=hyphenated_location_string) |
-                        Q(label__iexact=record['person_city']) |
-                        Q(label__iexact=record['person_state']) |
-                        Q(label__iexact=location) |
-                        Q(label__iexact=normalized_location_string) |
-                        Q(label__iexact=hyphenated_location_string)
-                    ).first()
-                    if matching_location:
-                        record['person_country'] = matching_location.region_name.title()
-                    else:
-                        record['person_country'] = record['person_state']
+            page_obj = update_country(page_obj, location)
+            # for record in page_obj:
+                # if not record['person_country']:
+                #     matching_location = LocationDetails.objects.filter(
+                #         Q(city_code__iexact=record['person_city']) |
+                #         Q(city_code__iexact=record['person_state']) |
+                #         Q(city_code__iexact=location) |
+                #         Q(city_code__iexact=normalized_location_string) |
+                #         Q(city_code__iexact=hyphenated_location_string) |
+                #         Q(label__iexact=record['person_city']) |
+                #         Q(label__iexact=record['person_state']) |
+                #         Q(label__iexact=location) |
+                #         Q(label__iexact=normalized_location_string) |
+                #         Q(label__iexact=hyphenated_location_string)
+                #     ).first()
+                #     if matching_location:
+                #         record['person_country'] = matching_location.region_name.title()
+                #     else:
+                #         record['person_country'] = record['person_state']
 
             context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
             context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
@@ -933,6 +1021,7 @@ def get_favourite_profiles(request):
                 candidate_dict['show_phone1'] = item.show_phone1
                 candidate_dict['show_phone2'] = item.show_phone2
                 candidate_dict['is_favourite'] = item.is_favourite
+                item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user_id)
                 candidate_dict['is_opened'] = False
                 if candidate_dict['show_email1'] or candidate_dict['show_email2'] or candidate_dict['show_phone1'] or candidate_dict['show_phone2']:
                         candidate_dict['is_opened'] = True
