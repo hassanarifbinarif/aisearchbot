@@ -1,4 +1,3 @@
-import os
 import json
 import operator
 import pandas as pd
@@ -755,6 +754,25 @@ def search_profile(request):
                 except Exception as e:
                     print(e)
             
+            for record in page_obj:
+                if not record['person_country']:
+                    matching_location = LocationDetails.objects.filter(
+                        Q(city_code__iexact=record['person_city']) |
+                        Q(city_code__iexact=record['person_state']) |
+                        Q(city_code__iexact=location) |
+                        Q(city_code__iexact=normalized_location_string) |
+                        Q(city_code__iexact=hyphenated_location_string) |
+                        Q(label__iexact=record['person_city']) |
+                        Q(label__iexact=record['person_state']) |
+                        Q(label__iexact=location) |
+                        Q(label__iexact=normalized_location_string) |
+                        Q(label__iexact=hyphenated_location_string)
+                    ).first()
+                    if matching_location:
+                        record['person_country'] = matching_location.region_name.title()
+                    else:
+                        record['person_country'] = record['person_state']
+
             context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
             context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
