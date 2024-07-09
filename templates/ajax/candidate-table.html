@@ -5,9 +5,9 @@
     <thead class="thead-dark">
         <tr>
             {% for field in field_names %}
-            {% if field != 'Id' %}
+            {% if field != 'Id' and field != 'Savedlistprofiles' %}
                 <th scope="col" id='state' onclick="table_sort(event, {{ forloop.counter0 }})" data-col='' >
-                    <span class='text-light me-1'>{{field | title}}</span>
+                    <span class='text-light me-1'>{{field|title}}</span>
                     <span>
                         <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
                             <path d="M6 1L5.29289 0.292893C5.68342 -0.0976313 6.31658 -0.0976313 6.70711 0.292893L6 1ZM7 16C7 16.5523 6.55229 17 6 17C5.44772 17 5 16.5523 5 16L7 16ZM0.292893 5.29289L5.29289 0.292893L6.70711 1.70711L1.70711 6.70711L0.292893 5.29289ZM6.70711 0.292893L11.7071 5.29289L10.2929 6.70711L5.29289 1.70711L6.70711 0.292893ZM7 1L7 16L5 16L5 1L7 1Z" fill="white"/>
