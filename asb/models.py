@@ -230,8 +230,8 @@ class SavedLists(models.Model):
 
 
 class SavedListProfiles(models.Model):
-    list = models.ForeignKey(SavedLists, on_delete=models.PROTECT)
-    profile = models.ForeignKey(CandidateProfiles, on_delete=models.PROTECT)
+    list = models.ForeignKey(SavedLists, on_delete=models.CASCADE)
+    profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
