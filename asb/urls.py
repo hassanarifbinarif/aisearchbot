@@ -52,4 +52,5 @@ urlpatterns = [
     path('get-prospection-list/', views.get_prospection_list, name='get_prospection_list'),
 
     path('add-record-in-list/', views.add_record_in_list, name='add_record_in_list'),
+    path('get-list-candidates/', views.get_list_candidates, name='get_list_candidates'),
 ]
