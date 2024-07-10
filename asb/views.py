@@ -1204,7 +1204,7 @@ def search_profile(request):
             page_obj = update_country(page_obj, location)
             total_records = combined_records.count()
             
-            sorted_obj = sort_profiles_by_priority(page_obj, keywords, job_titles, skills)
+            page_obj = sort_profiles_by_priority(page_obj, keywords, job_titles, skills)
 
             # differences = compare_order_before_and_after_sorting(page_obj, sorted_obj)
             # print(differences)
