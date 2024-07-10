@@ -22,7 +22,7 @@
         <div class="import-export-btns-container">
             <button onclick="location.pathname = `{% url 'export_file_data' %}`" class="import-export-btns">Export</button>
             <!-- <a href="{% url 'export_file_data' %}">export data</a> -->
-            <input type="file" onchange="uploadFile(event, this, this.nextElementSibling);" name="excelfile" id="excelfile"  accept=".csv, .xlsx, .xls">
+            <input type="file" onchange="uploadFile(event, this, this.nextElementSibling);" name="excelfile" id="file-uploader"  accept=".csv, .xlsx, .xls">
             <label for="excelfile" id='importfile' class="cursor-pointer import-export-btns">
                 <span class="spinner-border spinner-border-md hide" role="status" aria-hidden="true"></span>
                 <span class="btn-text">Import</span>

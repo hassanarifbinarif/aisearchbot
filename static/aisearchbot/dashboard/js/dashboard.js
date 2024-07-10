@@ -2,6 +2,7 @@ let getFirstPageBtn = document.getElementById('pagination-get-first-record-btn')
 let getPreviousPageBtn = document.getElementById('pagination-get-previous-record-btn');
 let getNextPageBtn = document.getElementById('pagination-get-next-record-btn');
 let getLastPageBtn = document.getElementById('pagination-get-last-record-btn');
+let filerUploaderInput = document.getElementById('file-uploader');
 
 const sortOrders = {};
 
@@ -173,6 +174,7 @@ async function uploadFile(event, inputField, button){
     response.json().then(function(res) {
         if (!res.success) {
             afterLoad(button, res.message);
+            filerUploaderInput.value = null;
             setTimeout(() => {
                 afterLoad(button, 'Import');    
             }, 1200)
@@ -181,6 +183,7 @@ async function uploadFile(event, inputField, button){
             inputField.value = '';
             getList(urlParams);
             afterLoad(button, 'Import');
+            filerUploaderInput.value = null;
             if (res.is_duplicate) {
                 document.querySelector('.addUser').click();   
             }
