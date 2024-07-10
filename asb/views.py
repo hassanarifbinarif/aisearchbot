@@ -399,10 +399,10 @@ def import_file_data(request):
                     'person_skills': 'person_skills',
                     'education_experience': 'education_experience',
                     'company_website': 'company_website',
-                    'Email_perso': 'email1',
-                    'Email_pro': 'email2',
-                    'Landline': 'phone1',
-                    'Cell_phone': 'phone2',
+                    'email_perso': 'email1',
+                    'email_pro': 'email2',
+                    'landline': 'phone1',
+                    'cell_phone': 'phone2',
                     'person_linkedin_url': 'person_linkedin_url',
                     'company_size_from': 'company_size_from',
                     'company_size_to': 'company_size_to',
@@ -431,7 +431,7 @@ def import_file_data(request):
                 for index, row in df.iterrows():
                     profile_data = {}
                     for column_name_in_df, field_name_in_model in column_map.items():
-                        value = row[column_name_in_df]
+                        value = row.get(column_name_in_df.lower(), None)
                         if field_name_in_model == 'person_skills' and value:
                             value = value.split(',')
                         if value == '':
@@ -440,7 +440,7 @@ def import_file_data(request):
                     
                     email = profile_data['email1']
                     try:
-                        original_profile = CandidateProfiles.objects.get(email1=email)
+                        original_profile = CandidateProfiles.objects.filter(email1=email).first()
                         profile_data['original_profile'] = original_profile
                         duplicate_instances.append(profile_data)
                         is_duplicate = True
