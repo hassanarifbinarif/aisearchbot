@@ -104,7 +104,6 @@ class CandidateProfiles(models.Model):
     person_country = models.CharField(max_length=100, null=True, blank=True)
     person_industry = models.CharField(max_length=150, null=True, blank=True)
     tags = models.TextField(null=True, blank=True)
-    # person_skills = models.TextField(null=True, blank=True)
     person_skills = ArrayField(models.CharField(max_length=100), blank=True, null=True)
     education_experience = models.TextField(null=True, blank=True)
     company_website = models.URLField(max_length=2000, null=True, blank=True)
