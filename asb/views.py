@@ -440,10 +440,13 @@ def import_file_data(request):
                     
                     email = profile_data['email1']
                     try:
-                        original_profile = CandidateProfiles.objects.get(email1=email)
-                        profile_data['original_profile'] = original_profile
-                        duplicate_instances.append(profile_data)
-                        is_duplicate = True
+                        original_profile = CandidateProfiles.objects.filter(email1=email).first()
+                        if original_profile:
+                            profile_data['original_profile'] = original_profile
+                            duplicate_instances.append(profile_data)
+                            is_duplicate = True
+                        else:
+                            new_instances.append(CandidateProfiles(**profile_data))
                     except CandidateProfiles.DoesNotExist:
                         new_instances.append(CandidateProfiles(**profile_data))
                 
