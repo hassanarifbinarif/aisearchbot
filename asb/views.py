@@ -6,6 +6,7 @@ from django.template import loader
 from collections import Counter
 from django.db.models import Q, F
 from functools import reduce
+from django.core.exceptions import ObjectDoesNotExist
 from django.http import HttpResponse, JsonResponse
 from aisearchbot.helpers import send_verification_code_email, send_account_credentials_email
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
@@ -16,13 +17,14 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers
+from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models.functions import Lower
 from django.contrib.postgres.search import SearchQuery, SearchRank, SearchVector
+
 
 # authentication views
 def super_admin_login(request):
@@ -315,7 +317,6 @@ def delete_user(request, pk):
         messages.error(request, 'User not found.')
     return redirect('users')
 
-
 def replace_chars_in_file(file):
     # Determine the file extension
     file_extension = os.path.splitext(file.name)[1].lower()
@@ -351,7 +352,7 @@ def replace_chars_in_file(file):
     else:
         return None, {"success": False, "error": "Unsupported file format. Please provide an Excel (.xlsx) or CSV (.csv) file."}
 
-
+# Your replacements dictionary here
 replacements = {
     'Ã‰': 'É', 'Ã¨': 'è', 'Ã©': 'é', 'Ã ': 'à', 'Ãª': 'ê', 'Ã®': 'î', 'Ã´': 'ô',
     'Ã¹': 'ù', 'Ã§': 'ç', 'Ã«': 'ë', 'Ã¯': 'ï', 'Ã¼': 'ü', 'Ãƒ': 'Ã', 'ãƒ': 'Ã',
@@ -361,7 +362,6 @@ replacements = {
     'Ã½': 'ý', 'Ã¿': 'ÿ', 'Å': 'Š', 'å': 'Š', 'Å¡': 'š', 'Å¸': 'Ÿ', 'Å½': 'Ž', 'Å¾': 'ž',
     'Å‚': 'ł', 'Å„': 'ń', 'Å¡': 'š', 'Å¸': 'Ÿ', 'Å¾': 'ž'
 }
-
 
 @csrf_exempt
 def import_file_data(request):
@@ -399,10 +399,10 @@ def import_file_data(request):
                     'person_skills': 'person_skills',
                     'education_experience': 'education_experience',
                     'company_website': 'company_website',
-                    'email_perso': 'email1',
-                    'email_pro': 'email2',
-                    'landline': 'phone1',
-                    'cell_phone': 'phone2',
+                    'Email_perso': 'email1',
+                    'Email_pro': 'email2',
+                    'Landline': 'phone1',
+                    'Cell_phone': 'phone2',
                     'person_linkedin_url': 'person_linkedin_url',
                     'company_size_from': 'company_size_from',
                     'company_size_to': 'company_size_to',
@@ -431,7 +431,7 @@ def import_file_data(request):
                 for index, row in df.iterrows():
                     profile_data = {}
                     for column_name_in_df, field_name_in_model in column_map.items():
-                        value = row.get(column_name_in_df.lower(), None)
+                        value = row[column_name_in_df]
                         if field_name_in_model == 'person_skills' and value:
                             value = value.split(',')
                         if value == '':
@@ -656,334 +656,64 @@ def filter_location(location, records, allow_null_first_iteration=False):
 
 
 def update_country(records, location):
-    normalized_location_string = []
-    hyphenated_location_string = []
-    location = [loc.lower() for loc in location]
-    for loc in location:
-        normalized_location_string.append(loc.replace('-', ' '))
-        hyphenated_location_string.append(loc.replace(' ', '-'))
-    for record in records:
-        if not record['person_country']:
-            match_query = Q()
-            for loc in location:
-                match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            for loc in normalized_location_string:
-                match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            for loc in hyphenated_location_string:
-                match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            match_query |= (Q(city_code__iexact=record['person_city']) | Q(city_code__iexact=record['person_state']) | Q(label__iexact=record['person_city']) | Q(label__iexact=record['person_state']))
-            matching_location = LocationDetails.objects.filter(match_query).first()
-            if matching_location:
-                record['person_country'] = matching_location.region_name.title()
-            else:
-                record['person_country'] = record['person_state']
+    if ',' in location:
+        words = [word.strip() for word in location.split(',')]
+        for i, word in enumerate(words):
+            normalized_location_string = word.replace('-', ' ')
+            hyphenated_location_string = word.replace(' ', '-')
+            for record in records:
+                if not record['person_country']:
+                    matching_location = LocationDetails.objects.filter(
+                        Q(city_code__iexact=record['person_city']) |
+                        Q(city_code__iexact=record['person_state']) |
+                        Q(city_code__iexact=location) |
+                        Q(city_code__iexact=normalized_location_string) |
+                        Q(city_code__iexact=hyphenated_location_string) |
+                        Q(label__iexact=record['person_city']) |
+                        Q(label__iexact=record['person_state']) |
+                        Q(label__iexact=location) |
+                        Q(label__iexact=normalized_location_string) |
+                        Q(label__iexact=hyphenated_location_string)
+                    ).first()
+                    if matching_location:
+                        record['person_country'] = matching_location.region_name.title()
+                    else:
+                        record['person_country'] = record['person_state']
+    else:
+        normalized_location_string = []
+        hyphenated_location_string = []
+        location = [loc.lower() for loc in location]
+        for loc in location:
+            normalized_location_string.append(loc.replace('-', ' '))
+            hyphenated_location_string.append(loc.replace(' ', '-'))
+        # normalized_location_string = location.replace('-', ' ')
+        # hyphenated_location_string = location.replace(' ', '-')
+        for record in records:
+            if not record['person_country']:
+                match_query = Q()
+                for loc in location:
+                    match_query |= (
+                        Q(city_code__iexact=loc) |
+                        Q(label__iexact=loc)
+                    )
+                for loc in normalized_location_string:
+                    match_query |= (
+                        Q(city_code__iexact=loc) |
+                        Q(label__iexact=loc)
+                    )
+                for loc in hyphenated_location_string:
+                    match_query |= (
+                        Q(city_code__iexact=loc) |
+                        Q(label__iexact=loc)
+                    )
+                match_query |= (Q(city_code__iexact=record['person_city']) | Q(city_code__iexact=record['person_state']) | Q(label__iexact=record['person_city']) | Q(label__iexact=record['person_state']))
+                matching_location = LocationDetails.objects.filter(match_query).first()
+                print(matching_location.region_name)
+                if matching_location:
+                    record['person_country'] = matching_location.region_name.title()
+                else:
+                    record['person_country'] = record['person_state']
     return records
-
-
-# @csrf_exempt
-# def search_profile(request):
-#     context = {}
-#     if request.method == 'POST':
-#         try:
-#             query_dict = json.loads(request.body)
-#             print(query_dict)
-#             user = query_dict.get('user_id', None)
-#             keywords = query_dict.get('keywords', '')
-#             location = query_dict.get('location', '')
-#             company_size_from = query_dict.get('size_from', None)
-#             company_size_to = query_dict.get('size_to', None)
-            
-#             if company_size_from == "" or company_size_from == "null":
-#                 company_size_from = None
-#             if company_size_to == "" or company_size_to == "null":
-#                 company_size_to = None
-            
-#             search_fields = [
-#                 'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
-#                 'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
-#                 'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
-#                 'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
-#                 'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
-#                 'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
-#                 'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
-#                 'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
-#             ]
-
-#             records = CandidateProfiles.objects.all().order_by('-id')
-#             records = records.annotate(lower_company_name=Lower('company_name'), personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
-#             records = records.filter(
-#                         Q(full_name__icontains=keywords) | Q(first_name__icontains=keywords) |
-#                         Q(last_name__icontains=keywords) | Q(headline__icontains=keywords) |
-#                         Q(current_position__icontains=keywords) | Q(company_name__icontains=keywords) |
-#                         Q(person_city__icontains=keywords) | Q(person_state__icontains=keywords) |
-#                         Q(person_country__icontains=keywords) | Q(person_industry__icontains=keywords) |
-#                         Q(tags__icontains=keywords) | Q(person_skills__icontains=keywords) |
-#                         Q(education_experience__icontains=keywords) | Q(company_website__icontains=keywords) |
-#                         Q(email1__icontains=keywords) | Q(email2__icontains=keywords) |
-#                         Q(phone1__icontains=keywords) | Q(phone2__icontains=keywords) |
-#                         Q(person_linkedin_url__icontains=keywords) | Q(company_city__icontains=keywords) |
-#                         Q(company_state__icontains=keywords) | Q(company_country__icontains=keywords) |
-#                         Q(person_angellist_url__icontains=keywords) | Q(person_crunchbase_url__icontains=keywords) |
-#                         Q(person_twitter_url__icontains=keywords) | Q(person_facebook_url__icontains=keywords) |
-#                         Q(company_linkedin_url__icontains=keywords)
-#                     )
-#             normalized_location_string = []
-#             hyphenated_location_string = []
-#             location = [loc.lower() for loc in location]
-#             for loc in location:
-#                 normalized_location_string.append(loc.replace('-', ' '))
-#                 hyphenated_location_string.append(loc.replace(' ', '-'))
-#             match_query = Q()
-#             for loc in location:
-#                 match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-#             for loc in normalized_location_string:
-#                 match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-#             for loc in hyphenated_location_string:
-#                 match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-#             matching_locations = LocationDetails.objects.filter(match_query)
-#             city_labels = matching_locations.values_list('label', flat=True)
-#             city_codes = matching_locations.values_list('city_code', flat=True)
-
-#             normalized_city_labels = []
-#             hyphenated_city_labels = []
-#             for label in city_labels:
-#                 normalized_city_labels.append(label.replace('-', ' ').lower())
-#                 hyphenated_city_labels.append(label.replace(' ', '-').lower())
-
-#             records = records.filter(
-#                     Q(personCity__in=location) |
-#                     Q(personState__in=location) |
-#                     Q(personCountry__in=location) |
-#                     Q(personCity__in=normalized_location_string) |
-#                     Q(personState__in=normalized_location_string) |
-#                     Q(personCountry__in=normalized_location_string) |
-#                     Q(personCity__in=hyphenated_location_string) |
-#                     Q(personState__in=hyphenated_location_string) |
-#                     Q(personCountry__in=hyphenated_location_string) |
-#                     Q(personCity__in=city_labels) |
-#                     Q(personState__in=city_labels) |
-#                     Q(personCountry__in=city_labels) |
-#                     Q(personCity__in=normalized_city_labels) |
-#                     Q(personState__in=normalized_city_labels) |
-#                     Q(personCountry__in=normalized_city_labels) |
-#                     Q(personCity__in=hyphenated_city_labels) |
-#                     Q(personState__in=hyphenated_city_labels) |
-#                     Q(personCountry__in=hyphenated_city_labels) |
-#                     Q(personCity__in=city_codes) |
-#                     Q(personState__in=city_codes) |
-#                     Q(personCountry__in=city_codes)
-#                 )
-#             records = records.case_insensitive_skills_search(query_dict.get('skills_list', []))
-            
-#             job_titles = query_dict.get('jobs_title_list', [])
-#             if len(job_titles) > 0:
-#                 job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
-#                 job_query = job_title_queries.pop()
-#                 for q in job_title_queries:
-#                     job_query |= q
-#                 records = records.filter(job_query)
-
-#             company_names = query_dict.get('company_name_list', [])
-#             if len(company_names) > 0:
-#                 company_name_queries = [Q(company_name__icontains=term) for term in company_names]
-#                 company_name_query = company_name_queries.pop()
-#                 for q in company_name_queries:
-#                     company_name_query |= q
-#                 records = records.filter(company_name_query)
-
-#             contact_details = query_dict.get('contact_details', [])
-#             if len(contact_details) > 0:
-#                 query = Q()
-#                 field_mapping = {'email1': 'email1', 'email2': 'email2', 'phone1': 'phone1', 'phone2': 'phone2'}
-#                 operation = query_dict.get('contact_details_radio', 'or')
-#                 for field in contact_details:
-#                     if field in field_mapping:
-#                         q = Q(**{f"{field_mapping[field]}__isnull": False})
-#                         if operation == 'or':
-#                             query |= q
-#                         elif operation == 'and':
-#                             query &= q
-#                 records = records.filter(query)
-                
-#             company_size_ranges = query_dict.get('company_size_ranges', [])
-#             if len(company_size_ranges) > 0:
-#                 company_size_query = Q()
-#                 for range in company_size_ranges:
-#                     size_from = range.get('from')
-#                     size_to = range.get('to')
-
-#                     try:
-#                         size_from = int(size_from)
-#                     except (ValueError, TypeError):
-#                         continue
-
-#                     try:
-#                         size_to = int(size_to)
-#                     except (ValueError, TypeError):
-#                         size_to = None
-
-#                     if size_to is None:
-#                         company_size_query |= Q(company_size_from__gte=size_from)
-#                     else:
-#                         company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
-#                 valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
-#                 records = records.filter(company_size_query & valid_data_query)
-
-#             records = records.filter(Q(full_name__icontains=query_dict.get('contact_name', '')) | Q(first_name__icontains=query_dict.get('contact_name', '')) | Q(last_name__icontains=query_dict.get('contact_name', '')))
-            
-#             page_number = query_dict.get("page", 1)
-#             records_per_page = 20
-#             paginator = Paginator(records, records_per_page)
-#             page_obj = paginator.get_page(page_number)
-#             context['current_page'] = page_obj.number
-#             context['total_pages'] = paginator.num_pages
-#             context['has_next'] = page_obj.has_next()
-#             context['has_previous'] = page_obj.has_previous()
-
-#             page_obj = list(page_obj.object_list.values(*search_fields))
-#             for item in page_obj:
-#                 item['show_email1'] = False
-#                 item['show_email2'] = False
-#                 item['show_phone1'] = False
-#                 item['show_phone2'] = False
-#                 item['is_favourite'] = False
-#                 item['is_opened'] = False
-#                 item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
-#                 try:
-#                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
-#                     item['show_email1'] = profile_visibility.show_email1
-#                     item['show_email2'] = profile_visibility.show_email2
-#                     item['show_phone1'] = profile_visibility.show_phone1
-#                     item['show_phone2'] = profile_visibility.show_phone2
-#                     item['is_favourite'] = profile_visibility.is_favourite
-#                     if item['show_email1'] or item['show_email2'] or item['show_phone1'] or item['show_phone2']:
-#                         item['is_opened'] = True
-#                 except Exception as e:
-#                     print(e)            
-#             page_obj = update_country(page_obj, location)
-
-#             context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
-#             context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
-#             context['success'] = True
-#             context['records_count'] = records.count()
-#             context['records'] = page_obj
-#             return JsonResponse(context, status=200)
-            
-
-#         except Exception as e:
-#             print(e)
-#             context['success'] = False
-#             context['message'] = 'Something bad happened!'
-#             return JsonResponse(context, status=500)
-
-#     return JsonResponse(context)
-
-
-def get_priority_1(records, keywords, job_titles):
-    if keywords == '' and len(job_titles) == 0:
-        return records    
-    job_query = Q()
-    if len(job_titles) > 0:
-        job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
-        job_query = job_title_queries.pop()
-        for q in job_title_queries:
-            job_query |= q
-    if keywords:
-        records = records.filter((Q(headline__icontains=keywords) | Q(current_position__icontains=keywords)) & job_query)
-    else:
-        records = records.filter(job_query)
-    return records
-
-
-def get_priority_2(records, keywords, job_titles, skills):
-    if keywords == '' and len(job_titles) == 0 and len(skills) == 0:
-        return records
-    job_query = Q()
-    if len(job_titles) > 0:
-        job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
-        job_query = job_title_queries.pop()
-        for q in job_title_queries:
-            job_query |= q
-    skill_query = Q()
-    if len(skills) > 0:
-        skill_queries = [Q(person_skills__contains=[term]) for term in skills]
-        skill_query = skill_queries.pop()
-        for q in skill_queries:
-            skill_query |= q
-    if keywords:
-        # General keyword in job title and filter keyword in skills
-        filter_1 = records.filter((Q(headline__icontains=keywords) | Q(current_position__icontains=keywords)) & skill_query)
-        # Filter keyword in job title and general keyword in skills
-        filter_2 = records.filter(job_query & Q(person_skills__contains=[keywords]))
-        return filter_1 | filter_2
-    else:
-        return records.filter(job_query & skill_query)
-
-
-def get_priority_3(records, keywords, filter_keywords):
-    if keywords == '' and len(filter_keywords) == 0:
-        return records
-
-    filter_query = Q()
-    if len(filter_keywords) > 0:
-        filter_keyword_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) | Q(person_skills__contains=[term]) for term in filter_keywords]
-        filter_query = filter_keyword_queries.pop()
-        for q in filter_keyword_queries:
-            filter_query |= q
-
-    if keywords:
-        keyword_query = (
-            Q(full_name__icontains=keywords) | Q(first_name__icontains=keywords) |
-            Q(last_name__icontains=keywords) | Q(headline__icontains=keywords) |
-            Q(current_position__icontains=keywords) | Q(company_name__icontains=keywords) |
-            Q(person_city__icontains=keywords) | Q(person_state__icontains=keywords) |
-            Q(person_country__icontains=keywords) | Q(person_industry__icontains=keywords) |
-            Q(tags__icontains=keywords) | Q(person_skills__contains=[keywords]) |
-            Q(education_experience__icontains=keywords) | Q(company_website__icontains=keywords) |
-            Q(email1__icontains=keywords) | Q(email2__icontains=keywords) |
-            Q(phone1__icontains=keywords) | Q(phone2__icontains=keywords) |
-            Q(person_linkedin_url__icontains=keywords) | Q(company_city__icontains=keywords) |
-            Q(company_state__icontains=keywords) | Q(company_country__icontains=keywords) |
-            Q(person_angellist_url__icontains=keywords) | Q(person_crunchbase_url__icontains=keywords) |
-            Q(person_twitter_url__icontains=keywords) | Q(person_facebook_url__icontains=keywords) |
-            Q(company_linkedin_url__icontains=keywords)
-        )
-
-        return records.filter(keyword_query & filter_query)
-    else:
-        return records.filter(filter_query)
-
-
-def get_priority_4(records, keywords, filter_keywords):
-    if keywords == '' and len(filter_keywords) == 0:
-        return records
-    combined_keywords = [keywords] + filter_keywords if keywords else filter_keywords
-
-    combined_query = Q()
-    if len(combined_keywords) > 0:
-        keyword_queries = [
-            Q(full_name__icontains=term) | Q(first_name__icontains=term) |
-            Q(last_name__icontains=term) | Q(headline__icontains=term) |
-            Q(current_position__icontains=term) | Q(company_name__icontains=term) |
-            Q(person_city__icontains=term) | Q(person_state__icontains=term) |
-            Q(person_country__icontains=term) | Q(person_industry__icontains=term) |
-            Q(tags__icontains=term) | Q(person_skills__contains=[term]) |
-            Q(education_experience__icontains=term) | Q(company_website__icontains=term) |
-            Q(email1__icontains=term) | Q(email2__icontains=term) |
-            Q(phone1__icontains=term) | Q(phone2__icontains=term) |
-            Q(person_linkedin_url__icontains=term) | Q(company_city__icontains=term) |
-            Q(company_state__icontains=term) | Q(company_country__icontains=term) |
-            Q(person_angellist_url__icontains=term) | Q(person_crunchbase_url__icontains=term) |
-            Q(person_twitter_url__icontains=term) | Q(person_facebook_url__icontains=term) |
-            Q(company_linkedin_url__icontains=term)
-            for term in combined_keywords
-        ]
-        combined_query = keyword_queries.pop()
-        for q in keyword_queries:
-            combined_query |= q
-
-    return records.filter(combined_query)
-
 
 
 @csrf_exempt
@@ -992,22 +722,20 @@ def search_profile(request):
     if request.method == 'POST':
         try:
             query_dict = json.loads(request.body)
+            print(query_dict)
+            # {'keywords': '', 'location': ['Rhône', 'Lille'], 'contact_details_radio': 'or', 'contact_name': '', 'size_from': 'null', 'size_to': 'null', 'skills_list': [], 'jobs_title_list': [], 'company_name_list': [], 'contact_details': [], 'company_size_ranges': [], 'page': 1, 'user_id': 2}
             user = query_dict.get('user_id', None)
-            keywords = query_dict.get('keywords', '').lower()
-            location = query_dict.get('location', [])
-            job_titles = query_dict.get('jobs_title_list', [])
-            skills = query_dict.get('skills_list', [])
-            company_names = query_dict.get('company_name_list', [])
-            company_size_ranges = query_dict.get('company_size_ranges', [])
-            contact_details = query_dict.get('contact_details', [])
+            
+            keywords = query_dict.get('keywords', '')
+            location = query_dict.get('location', '')
             company_size_from = query_dict.get('size_from', None)
             company_size_to = query_dict.get('size_to', None)
-
-            if company_size_from in ["", "null"]:
+            
+            if company_size_from == "" or company_size_from == "null":
                 company_size_from = None
-            if company_size_to in ["", "null"]:
+            if company_size_to == "" or company_size_to == "null":
                 company_size_to = None
-
+            
             search_fields = [
                 'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
                 'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
@@ -1016,83 +744,98 @@ def search_profile(request):
                 'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
                 'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
                 'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
-                'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url', 'company_logo_url'
+                'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url','company_logo_url'
             ]
 
-            # Base queryset
             records = CandidateProfiles.objects.all().order_by('-id')
-            records = records.annotate(
-                lower_company_name=Lower('company_name'),
-                personCity=Lower('person_city'),
-                personState=Lower('person_state'),
-                personCountry=Lower('person_country')
-            )
 
+            records = records.annotate(lower_company_name=Lower('company_name'), personCity=Lower('person_city'), personState=Lower('person_state'), personCountry=Lower('person_country'))
             records = records.filter(
-                Q(full_name__icontains=keywords) | Q(first_name__icontains=keywords) |
-                Q(last_name__icontains=keywords) | Q(headline__icontains=keywords) |
-                Q(current_position__icontains=keywords) | Q(company_name__icontains=keywords) |
-                Q(person_city__icontains=keywords) | Q(person_state__icontains=keywords) |
-                Q(person_country__icontains=keywords) | Q(person_industry__icontains=keywords) |
-                Q(tags__icontains=keywords) | Q(person_skills__icontains=keywords) |
-                Q(education_experience__icontains=keywords) | Q(company_website__icontains=keywords) |
-                Q(email1__icontains=keywords) | Q(email2__icontains=keywords) |
-                Q(phone1__icontains=keywords) | Q(phone2__icontains=keywords) |
-                Q(person_linkedin_url__icontains=keywords) | Q(company_city__icontains=keywords) |
-                Q(company_state__icontains=keywords) | Q(company_country__icontains=keywords) |
-                Q(person_angellist_url__icontains=keywords) | Q(person_crunchbase_url__icontains=keywords) |
-                Q(person_twitter_url__icontains=keywords) | Q(person_facebook_url__icontains=keywords) |
-                Q(company_linkedin_url__icontains=keywords)
-            )
+                        Q(headline__icontains=keywords) |
+                        Q(current_position__icontains=keywords)
+                    )
+            if ',' in location:
+                words = [word.strip() for word in location.split(',')]
+                words.reverse()
+                for i, word in enumerate(words):
+                    allow_null = (i == 0)
+                    normalized_location_string = word.replace('-', ' ')
+                    hyphenated_location_string = word.replace(' ', '-')
+                    records = filter_location(word, records, allow_null_first_iteration=allow_null)
+            else:
+                normalized_location_string = []
+                hyphenated_location_string = []
+                location = [loc.lower() for loc in location]
+                for loc in location:
+                    normalized_location_string.append(loc.replace('-', ' '))
+                    hyphenated_location_string.append(loc.replace(' ', '-'))
+                match_query = Q()
+                for loc in location:
+                    match_query |= (
+                        Q(region_name__iexact=loc) |
+                        Q(department_name__iexact=loc)
+                    )
+                for loc in normalized_location_string:
+                    match_query |= (
+                        Q(region_name__iexact=loc) |
+                        Q(department_name__iexact=loc)
+                    )
+                for loc in hyphenated_location_string:
+                    match_query |= (
+                        Q(region_name__iexact=loc) |
+                        Q(department_name__iexact=loc)
+                    )
+                # matching_locations = LocationDetails.objects.annotate(lower_region_name=Lower('region_name'), lower_department_name=Lower('department_name')).filter(
+                #     Q(lower_region_name__in=location) | Q(lower_region_name__in=normalized_location_string) | 
+                #     Q(lower_region_name__in=hyphenated_location_string) | Q(lower_department_name__in=location) |
+                #     Q(lower_department_name__in=normalized_location_string) | Q(lower_department_name__in=hyphenated_location_string)
+                # )
+                matching_locations = LocationDetails.objects.filter(match_query)
+                city_labels = matching_locations.values_list('label', flat=True)
+                city_codes = matching_locations.values_list('city_code', flat=True)
 
-            normalized_location_string = []
-            hyphenated_location_string = []
-            location = [loc.lower() for loc in location]
-            for loc in location:
-                normalized_location_string.append(loc.replace('-', ' '))
-                hyphenated_location_string.append(loc.replace(' ', '-'))
-            match_query = Q()
-            for loc in location:
-                match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-            for loc in normalized_location_string:
-                match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-            for loc in hyphenated_location_string:
-                match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-            matching_locations = LocationDetails.objects.filter(match_query)
-            city_labels = matching_locations.values_list('label', flat=True)
-            city_codes = matching_locations.values_list('city_code', flat=True)
+                normalized_city_labels = []
+                hyphenated_city_labels = []
+                for label in city_labels:
+                    normalized_city_labels.append(label.replace('-', ' ').lower())
+                    hyphenated_city_labels.append(label.replace(' ', '-').lower())
 
-            normalized_city_labels = []
-            hyphenated_city_labels = []
-            for label in city_labels:
-                normalized_city_labels.append(label.replace('-', ' ').lower())
-                hyphenated_city_labels.append(label.replace(' ', '-').lower())
-
-            records = records.filter(
-                    Q(personCity__in=location) |
-                    Q(personState__in=location) |
-                    Q(personCountry__in=location) |
-                    Q(personCity__in=normalized_location_string) |
-                    Q(personState__in=normalized_location_string) |
-                    Q(personCountry__in=normalized_location_string) |
-                    Q(personCity__in=hyphenated_location_string) |
-                    Q(personState__in=hyphenated_location_string) |
-                    Q(personCountry__in=hyphenated_location_string) |
-                    Q(personCity__in=city_labels) |
-                    Q(personState__in=city_labels) |
-                    Q(personCountry__in=city_labels) |
-                    Q(personCity__in=normalized_city_labels) |
-                    Q(personState__in=normalized_city_labels) |
-                    Q(personCountry__in=normalized_city_labels) |
-                    Q(personCity__in=hyphenated_city_labels) |
-                    Q(personState__in=hyphenated_city_labels) |
-                    Q(personCountry__in=hyphenated_city_labels) |
-                    Q(personCity__in=city_codes) |
-                    Q(personState__in=city_codes) |
-                    Q(personCountry__in=city_codes)
-                )
+                records = records.filter(
+                        Q(personCity__in=location) |
+                        Q(personState__in=location) |
+                        Q(personCountry__in=location) |
+                        Q(personCity__in=normalized_location_string) |
+                        Q(personState__in=normalized_location_string) |
+                        Q(personCountry__in=normalized_location_string) |
+                        Q(personCity__in=hyphenated_location_string) |
+                        Q(personState__in=hyphenated_location_string) |
+                        Q(personCountry__in=hyphenated_location_string) |
+                        Q(personCity__in=city_labels) |
+                        Q(personState__in=city_labels) |
+                        Q(personCountry__in=city_labels) |
+                        Q(personCity__in=normalized_city_labels) |
+                        Q(personState__in=normalized_city_labels) |
+                        Q(personCountry__in=normalized_city_labels) |
+                        Q(personCity__in=hyphenated_city_labels) |
+                        Q(personState__in=hyphenated_city_labels) |
+                        Q(personCountry__in=hyphenated_city_labels) |
+                        Q(personCity__in=city_codes) |
+                        Q(personState__in=city_codes) |
+                        Q(personCountry__in=city_codes)
+                    )
+                # for ab in records:
+                #     print(ab.person_city, ab.person_state, ab.person_country)
+            records = records.case_insensitive_skills_search(query_dict.get('skills_list', []))
             
-            # Apply company name filter
+            job_titles = query_dict.get('jobs_title_list', [])
+            if len(job_titles) > 0:
+                job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
+                job_query = job_title_queries.pop()
+                for q in job_title_queries:
+                    job_query |= q
+                records = records.filter(job_query)
+
+            company_names = query_dict.get('company_name_list', [])
             if len(company_names) > 0:
                 company_name_queries = [Q(company_name__icontains=term) for term in company_names]
                 company_name_query = company_name_queries.pop()
@@ -1100,41 +843,15 @@ def search_profile(request):
                     company_name_query |= q
                 records = records.filter(company_name_query)
 
-            # Apply job title filter
-            if len(job_titles) > 0:
-                job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
-                job_query = job_title_queries.pop()
-                for q in job_title_queries:
-                    job_query |= q
-                records = records.filter(job_query)
-            
-            
-            # Apply company size filter
-            if len(company_size_ranges) > 0:
-                company_size_query = Q()
-                for range in company_size_ranges:
-                    size_from = range.get('from')
-                    size_to = range.get('to')
-                    try:
-                        size_from = int(size_from)
-                    except (ValueError, TypeError):
-                        continue
-                    try:
-                        size_to = int(size_to)
-                    except (ValueError, TypeError):
-                        size_to = None
-                    if size_to is None:
-                        company_size_query |= Q(company_size_from__gte=size_from)
-                    else:
-                        company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
-                valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
-                records = records.filter(company_size_query & valid_data_query)
-
-            
-            # Apply contact details filter
+            contact_details = query_dict.get('contact_details', [])
             if len(contact_details) > 0:
                 query = Q()
-                field_mapping = {'email1': 'email1', 'email2': 'email2', 'phone1': 'phone1', 'phone2': 'phone2'}
+                field_mapping = {
+                    'email1': 'email1',
+                    'email2': 'email2',
+                    'phone1': 'phone1',
+                    'phone2': 'phone2'
+                }
                 operation = query_dict.get('contact_details_radio', 'or')
                 for field in contact_details:
                     if field in field_mapping:
@@ -1144,43 +861,46 @@ def search_profile(request):
                         elif operation == 'and':
                             query &= q
                 records = records.filter(query)
+                
+            company_size_ranges = query_dict.get('company_size_ranges', [])
+            if len(company_size_ranges) > 0:
+                company_size_query = Q()
+                for range in company_size_ranges:
+                    size_from = range.get('from')
+                    size_to = range.get('to')
 
+                    try:
+                        size_from = int(size_from)
+                    except (ValueError, TypeError):
+                        continue
+
+                    try:
+                        size_to = int(size_to)
+                    except (ValueError, TypeError):
+                        size_to = None
+
+                    if size_to is None:
+                        company_size_query |= Q(company_size_from__gte=size_from)
+                    else:
+                        company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
+                valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
+                records = records.filter(company_size_query & valid_data_query)
+
+            records = records.filter(
+                Q(full_name__icontains=query_dict.get('contact_name', '')) |
+                Q(first_name__icontains=query_dict.get('contact_name', '')) |
+                Q(last_name__icontains=query_dict.get('contact_name', ''))
+            )
             
-            # Apply contact name filter
-            records = records.filter(Q(full_name__icontains=query_dict.get('contact_name', '')) | Q(first_name__icontains=query_dict.get('contact_name', '')) | Q(last_name__icontains=query_dict.get('contact_name', '')))
-            records = records.case_insensitive_skills_search(skills)
-
-            # print(job_titles + skills)
-
-            # priority_1 = get_priority_1(records, keywords, job_titles)
-            # priority_2 = get_priority_2(records, keywords, job_titles, skills)
-            # priority_3 = get_priority_3(records, keywords, job_titles + skills)
-            # priority_4 = get_priority_4(records, keywords, job_titles + skills)
-
-            # for ab in priority_3:
-            #     print(ab)
-
-            # Combine the priority queries
-            # combined_records = priority_1
-            # combined_records = priority_1.union(priority_2).union(priority_3).union(priority_4)
-
-            # combined_records = priority_1 | priority_2 | priority_3 | priority_4
-            # combined_records = combined_records.distinct()
-            combined_records = records
-            print(combined_records.count())
-
-
-            # Pagination
             page_number = query_dict.get("page", 1)
             records_per_page = 20
-            paginator = Paginator(combined_records, records_per_page)
+            paginator = Paginator(records, records_per_page)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
             context['total_pages'] = paginator.num_pages
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
 
-            # Prepare results
             page_obj = list(page_obj.object_list.values(*search_fields))
             for item in page_obj:
                 item['show_email1'] = False
@@ -1201,92 +921,24 @@ def search_profile(request):
                         item['is_opened'] = True
                 except Exception as e:
                     print(e)
-            page_obj = update_country(page_obj, location)
-            total_records = combined_records.count()
             
-            page_obj = sort_profiles_by_priority(page_obj, keywords, job_titles, skills)
+            page_obj = update_country(page_obj, location)
 
-            # differences = compare_order_before_and_after_sorting(page_obj, sorted_obj)
-            # print(differences)
-
-            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
-            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
-            context['records_count'] = total_records
+            context['records_count'] = records.count()
             context['records'] = page_obj
             return JsonResponse(context, status=200)
+            
 
         except Exception as e:
             print(e)
             context['success'] = False
-            context['message'] = 'Something bad happened!'
+            context['message'] = 'Something bad happed!'
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
-
-
-def compare_order_before_and_after_sorting(original_records, sorted_records):
-    differences = []
-    
-    original_ids = [record['id'] for record in original_records]
-    sorted_ids = [record['id'] for record in sorted_records]
-    
-    for i, original_id in enumerate(original_ids):
-        sorted_position = sorted_ids.index(original_id)
-        if sorted_position != i:
-            differences.append({
-                'record_id': original_id,
-                'original_position': i,
-                'new_position': sorted_position
-            })
-    
-    return differences
-
-
-def sort_profiles_by_priority(records, keywords, job_titles, skills):
-    def get_priority(record):
-        # Priority 1: Profiles with both keywords in "job title"
-        if keywords and job_titles:
-            if (keywords.lower() in (record.get('headline', '').lower() if isinstance(record.get('headline'), str) else '') or
-                keywords.lower() in (record.get('current_position', '').lower() if isinstance(record.get('current_position'), str) else '')) and \
-                any(job_title.lower() in (record.get('headline', '').lower() if isinstance(record.get('headline'), str) else '') or
-                    job_title.lower() in (record.get('current_position', '').lower() if isinstance(record.get('current_position'), str) else '') for job_title in job_titles):
-                return 1
-        
-        # Priority 2: General keyword in "job title" and filter keyword in "skills" (or vice versa)
-        if keywords and skills:
-            if (keywords.lower() in (record.get('headline', '').lower() if isinstance(record.get('headline'), str) else '') or
-                keywords.lower() in (record.get('current_position', '').lower() if isinstance(record.get('current_position'), str) else '')) and \
-                any(skill.lower() in (record.get('person_skills', []) if isinstance(record.get('person_skills'), list) else []) for skill in skills):
-                return 2
-            if any(skill.lower() in (record.get('headline', '').lower() if isinstance(record.get('headline'), str) else '') or
-                   skill.lower() in (record.get('current_position', '').lower() if isinstance(record.get('current_position'), str) else '') for skill in skills) and \
-                keywords.lower() in (record.get('person_skills', []) if isinstance(record.get('person_skills'), list) else []):
-                return 2
-        
-        # Priority 3: Both keywords anywhere in the profile data
-        if keywords and job_titles:
-            if any(isinstance(value, str) and keywords.lower() in value.lower() for value in record.values()) and \
-                any(isinstance(value, str) and job_title.lower() in value.lower() for value in record.values() for job_title in job_titles):
-                return 3
-        
-        # Priority 4: Either keyword in any fields
-        if keywords or job_titles or skills:
-            if any(isinstance(value, str) and keywords.lower() in value.lower() for value in record.values()):
-                return 4
-            if any(isinstance(value, str) and job_title.lower() in value.lower() for value in record.values() for job_title in job_titles):
-                return 4
-            if any(isinstance(value, str) and skill.lower() in value.lower() for value in record.values() for skill in skills):
-                return 4
-        
-        # Default priority
-        return 5
-
-    sorted_records = sorted(records, key=get_priority)
-    return sorted_records
-
-
-
 
 
 @csrf_exempt
@@ -1295,9 +947,14 @@ def toggle_visibility(request):
         try:
             data = json.loads(request.body)
             user_id = data.get('user', None)
-            record_id = data.get('record_id', None)            
+            record_id = data.get('record_id', None)
+            # show_email1 = data.get('show_email1', False)
+            # show_email2 = data.get('show_email2', False)
+            # show_phone1 = data.get('show_phone1', False)
+            # show_phone2 = data.get('show_phone2', False)
             
             update_fields = {}
+
             fields = ['show_email1', 'show_email2', 'show_phone1', 'show_phone2', 'is_favourite']
             for field in fields:
                 if field in data:
@@ -1348,7 +1005,7 @@ def get_favourite_profiles(request):
                 Q(candidate__company_name__icontains=search_params) | 
                 Q(candidate__headline__icontains=search_params) | 
                 Q(candidate__current_position__icontains=search_params) | 
-                # Q(candidate__person_skills__icontains=search_params) |
+                Q(candidate__person_skills__icontains=search_params) |
                 Q(personCity__icontains=search_params) |
                 Q(personState__icontains=search_params) |
                 Q(personCountry__icontains=search_params) |
@@ -1488,7 +1145,7 @@ def get_opened_profiles(request):
                 Q(candidate__company_name__icontains=search_params) | 
                 Q(candidate__headline__icontains=search_params) | 
                 Q(candidate__current_position__icontains=search_params) | 
-                # Q(candidate__person_skills__icontains=search_params) |
+                Q(candidate__person_skills__icontains=search_params) |
                 Q(personCity__icontains=search_params) |
                 Q(personState__icontains=search_params) |
                 Q(personCountry__icontains=search_params) |
@@ -1677,6 +1334,33 @@ def add_list(request):
 
 
 @csrf_exempt
+def delete_list(request):
+    context = {}
+    if request.method == "DELETE":
+        try:
+            data = json.loads(request.body)
+            list_id = data.get('record_id', None)
+            if list_id is not None:
+                list_instance = SavedLists.objects.filter(id=list_id)
+                if list_instance.exists():
+                    list_instance.delete()
+                    context['success'] = True
+                    context['message'] = "List Deleted."
+                else:
+                    context['success'] = False
+                    context['message'] = "Reocrd no found."
+            else:
+                context['success'] = False
+                context['message'] = "record id can't be None"
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = e
+    
+    return JsonResponse(context)
+
+
+@csrf_exempt
 def get_recruitment_list(request):
     context = {}
     if request.method == 'POST':
@@ -1770,12 +1454,140 @@ def add_record_in_list(request):
 
 
 # Temporary view to delete all location data
-
 @super_admin_required
 def delete_all_cities_data(request):
     LocationDetails.objects.all().delete()
     return redirect('/')
 
+@csrf_exempt
+def get_list_candidates(request, pk):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
 
-def get_list_candidates(request):
-    return JsonResponse({"sucess": True, "message": "here is the."})
+            # Fetch saved profiles for the given list
+            saved_profiles = SavedListProfiles.objects.filter(list=pk).order_by("-created_at")
+            profile_ids = saved_profiles.values_list('profile_id', flat=True)
+            records = CandidateProfiles.objects.filter(id__in=profile_ids)
+            context['list_name'] = SavedLists.objects.get(pk=pk).name
+
+            # Pagination
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+
+            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = records.count()
+
+            # Construct the list of records with additional info
+            records_list = []
+            for record in page_obj.object_list:
+                # Fetch visibility toggle for each candidate profile
+                visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate=record, search_user_id=user_id).first()
+
+                candidate_dict = {
+                    'id': record.id,
+                    'full_name': record.full_name,
+                    'first_name': record.first_name,
+                    'last_name': record.last_name,
+                    'headline': record.headline,
+                    'current_position': record.current_position,
+                    'company_name': record.company_name,
+                    'person_city': record.person_city,
+                    'person_state': record.person_state,
+                    'person_country': record.person_country,
+                    'person_industry': record.person_industry,
+                    'tags': record.tags,
+                    'person_skills': record.person_skills,
+                    'education_experience': record.education_experience,
+                    'company_website': record.company_website,
+                    'email1': record.email1,
+                    'email2': record.email2,
+                    'phone1': record.phone1,
+                    'phone2': record.phone2,
+                    'person_linkedin_url': record.person_linkedin_url,
+                    'company_size_from': record.company_size_from,
+                    'company_size_to': record.company_size_to,
+                    'current_position_2': record.current_position_2,
+                    'current_company_2': record.current_company_2,
+                    'previous_position_2': record.previous_position_2,
+                    'previous_company_2': record.previous_company_2,
+                    'previous_position_3': record.previous_position_3,
+                    'previous_company_3': record.previous_company_3,
+                    'company_city': record.company_city,
+                    'company_state': record.company_state,
+                    'company_country': record.company_country,
+                    'person_angellist_url': record.person_angellist_url,
+                    'person_crunchbase_url': record.person_crunchbase_url,
+                    'person_twitter_url': record.person_twitter_url,
+                    'person_facebook_url': record.person_facebook_url,
+                    'company_linkedin_url': record.company_linkedin_url,
+                    'person_image_url': record.person_image_url,
+                    'company_logo_url': record.company_logo_url,
+                    'show_email1': visibility_toggle.show_email1 if visibility_toggle else False,
+                    'show_email2': visibility_toggle.show_email2 if visibility_toggle else False,
+                    'show_phone1': visibility_toggle.show_phone1 if visibility_toggle else False,
+                    'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
+                    'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
+                    'is_in_list': SavedListProfiles.objects.filter(profile=record).exists(),
+                }
+                records_list.append(candidate_dict)
+
+            context['records'] = records_list
+            return JsonResponse(context, status=200)
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happened!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
+@csrf_exempt
+def remove_record_from_list(request):
+    context = {}
+    if request.method == "POST":
+        try:
+            body = json.loads(request.body)
+            list_id = body.get("list_id", None)
+            candidate_id = body.get("record_id", None)
+
+            if not list_id or not candidate_id:
+                context['success'] = False
+                context['message'] = 'list_id and record_id are required'
+                return JsonResponse(context, status=400)
+
+            record = SavedListProfiles.objects.filter(list_id=list_id, profile_id=candidate_id)
+            if record.exists():
+                record.delete()
+                context['success'] = True
+                context['message'] = 'Record deleted successfully'
+            else:
+                context['success'] = False
+                context['message'] = 'Record not found'
+        except json.JSONDecodeError:
+            context['success'] = False
+            context['message'] = 'Invalid JSON format'
+            return JsonResponse(context, status=400)
+        except Exception as e:
+            context['success'] = False
+            context['message'] = f'Something bad happened: {str(e)}'
+            return JsonResponse(context, status=500)
+    else:
+        context['success'] = False
+        context['message'] = 'Invalid request method'
+        return JsonResponse(context, status=405)
+
+    return JsonResponse(context)

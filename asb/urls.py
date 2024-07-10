@@ -48,9 +48,12 @@ urlpatterns = [
 
     #saved lists
     path('add-list/', views.add_list, name='add_list'),
+    path('delete-list/', views.delete_list, name='delete_list'),
+    
     path('get-recruitment-list/', views.get_recruitment_list, name='get_recruitment_list'),
     path('get-prospection-list/', views.get_prospection_list, name='get_prospection_list'),
 
     path('add-record-in-list/', views.add_record_in_list, name='add_record_in_list'),
-    path('get-list-candidates/', views.get_list_candidates, name='get_list_candidates'),
+    path('remove-record-from-list/', views.remove_record_from_list, name='remove_record_from_list'),
+    path('get-list-candidates/<int:pk>', views.get_list_candidates, name='get_list_candidates'),
 ]
