@@ -56,5 +56,6 @@ urlpatterns = [
 
     path('add-record-in-list/', views.add_record_in_list, name='add_record_in_list'),
     path('remove-record-from-list/', views.remove_record_from_list, name='remove_record_from_list'),
+    path('remove-candidate-from-list/', views.remove_candidate_from_list, name='remove_candidate_from_list'),
     path('get-list-candidates/<int:pk>', views.get_list_candidates, name='get_list_candidates'),
 ]

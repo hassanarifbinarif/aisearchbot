@@ -1773,3 +1773,41 @@ def remove_record_from_list(request):
         return JsonResponse(context, status=405)
 
     return JsonResponse(context)
+
+
+@csrf_exempt
+def remove_candidate_from_list(request):
+    context = {}
+    if request.method == "POST":
+        try:
+            body = json.loads(request.body)
+            user_id = body.get("user_id", None)
+            candidate_id = body.get("record_id", None)
+
+            if not user_id or not candidate_id:
+                context['success'] = False
+                context['message'] = 'list_id and record_id are required'
+                return JsonResponse(context, status=400)
+
+            record = SavedListProfiles.objects.filter(list__list_user_id=user_id,profile_id=candidate_id)
+            if record.exists():
+                record.delete()
+                context['success'] = True
+                context['message'] = 'Record deleted successfully'
+            else:
+                context['success'] = False
+                context['message'] = 'Record not found'
+        except json.JSONDecodeError:
+            context['success'] = False
+            context['message'] = 'Invalid JSON format'
+            return JsonResponse(context, status=400)
+        except Exception as e:
+            context['success'] = False
+            context['message'] = f'Something bad happened: {str(e)}'
+            return JsonResponse(context, status=500)
+    else:
+        context['success'] = False
+        context['message'] = 'Invalid request method'
+        return JsonResponse(context, status=405)
+
+    return JsonResponse(context)
