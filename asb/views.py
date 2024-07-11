@@ -1377,6 +1377,7 @@ def delete_list(request):
     
     return JsonResponse(context)
 
+
 @csrf_exempt
 def update_list(request):
     context = {}
