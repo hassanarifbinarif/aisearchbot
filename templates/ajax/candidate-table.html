@@ -66,8 +66,8 @@
             <td><a {% if not item.person_twitter_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.person_twitter_url}}" target="_blank"{% endif %}>Twitter</a></td>
             <td><a {% if not item.person_facebook_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.person_facebook_url}}" target="_blank"{% endif %} >Facebook</a></td>
             <td><a {% if not item.company_linkedin_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.company_linkedin_url}}" target="_blank"{% endif %} >Company Linkedin</a></td>
-            <td><a href="{{item.person_image_url}}" target="_blank"><img class="item-img" src="{{item.person_image_url}}" alt="person img"></a></td>
-            <td><a href="{{item.company_logo_url}}" target="_blank"><img class="item-img" src="{{item.company_logo_url}}" alt="company logosss"></a></td>
+            <td><a href="{{item.person_image_url}}" target="_blank"><img class="item-img" onerror="this.onerror=null;this.src=`{% static 'aisearchbot/common/images/default-profile.png' %}`;" src="{{item.person_image_url}}" alt="person img"></a></td>
+            <td><a href="{{item.company_logo_url}}" target="_blank"><img class="item-img" onerror="this.onerror=null;this.src=`{% static 'aisearchbot/common/images/default-profile.png' %}`;" src="{{item.company_logo_url}}" alt="company logo"></a></td>
         </tr>
         {% empty %}
         <tr>
