@@ -169,26 +169,35 @@ async function uploadFile(event, inputField, button){
     let file = event.target.files;
     let formData = new FormData();
     formData.append('data_file', file[0]);
-    beforeLoad(button);
-    let response = await requestAPI('/import-data/', formData, {}, 'POST');
-    response.json().then(function(res) {
-        if (!res.success) {
-            afterLoad(button, res.message);
-            filerUploaderInput.value = null;
-            setTimeout(() => {
-                afterLoad(button, 'Import');    
-            }, 1200)
-        }
-        else {
-            inputField.value = '';
-            getList(urlParams);
-            afterLoad(button, 'Import');
-            filerUploaderInput.value = null;
-            if (res.is_duplicate) {
-                document.querySelector('.addUser').click();   
+    try {
+        beforeLoad(button);
+        let response = await requestAPI('/import-data/', formData, {}, 'POST');
+        response.json().then(function(res) {
+            if (!res.success) {
+                inputField.value = null;
+                afterLoad(button, res.message);
+                setTimeout(() => {
+                    afterLoad(button, 'Import');    
+                }, 1200)
             }
-        }
-    })
+            else {
+                inputField.value = null;
+                getList(urlParams);
+                afterLoad(button, 'Import');
+                if (res.is_duplicate) {
+                    document.querySelector('.addUser').click();
+                }
+            }
+        })
+    }
+    catch (err) {
+        inputField.value = null;
+        afterLoad(button, 'Error');
+        console.log(err);
+        setTimeout(() => {
+            afterLoad(button, 'Import');    
+        }, 1200)
+    }
 }
 
 async function exportData() {

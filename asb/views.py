@@ -317,42 +317,7 @@ def delete_user(request, pk):
         messages.error(request, 'User not found.')
     return redirect('users')
 
-def replace_chars_in_file(file):
-    # Determine the file extension
-    file_extension = os.path.splitext(file.name)[1].lower()
-    
-    if file_extension == '.xlsx':
-        # Load the Excel file
-        df = pd.read_excel(file, sheet_name=None)
-        
-        # Iterate over each sheet
-        for sheet_name, sheet_df in df.items():
-            # Iterate over each column
-            for column in sheet_df.columns:
-                # Apply replacements if the column is of type string
-                if sheet_df[column].dtype == 'object':
-                    for old_char, new_char in replacements.items():
-                        sheet_df[column] = sheet_df[column].str.replace(old_char, new_char, regex=False)
-        
-        return df, {"success": True}
-        
-    elif file_extension == '.csv':
-        # Load the CSV file
-        df = pd.read_csv(file)
-        
-        # Iterate over each column
-        for column in df.columns:
-            # Apply replacements if the column is of type string
-            if df[column].dtype == 'object':
-                for old_char, new_char in replacements.items():
-                    df[column] = df[column].str.replace(old_char, new_char, regex=False)
-        
-        return df, {"success": True}
 
-    else:
-        return None, {"success": False, "error": "Unsupported file format. Please provide an Excel (.xlsx) or CSV (.csv) file."}
-
-# Your replacements dictionary here
 replacements = {
     'Ã‰': 'É', 'Ã¨': 'è', 'Ã©': 'é', 'Ã ': 'à', 'Ãª': 'ê', 'Ã®': 'î', 'Ã´': 'ô',
     'Ã¹': 'ù', 'Ã§': 'ç', 'Ã«': 'ë', 'Ã¯': 'ï', 'Ã¼': 'ü', 'Ãƒ': 'Ã', 'ãƒ': 'Ã',
@@ -362,6 +327,53 @@ replacements = {
     'Ã½': 'ý', 'Ã¿': 'ÿ', 'Å': 'Š', 'å': 'Š', 'Å¡': 'š', 'Å¸': 'Ÿ', 'Å½': 'Ž', 'Å¾': 'ž',
     'Å‚': 'ł', 'Å„': 'ń', 'Å¡': 'š', 'Å¸': 'Ÿ', 'Å¾': 'ž'
 }
+
+def replace_chars_in_file(file):
+    # Determine the file extension
+    file_extension = os.path.splitext(file.name)[1].lower()
+    
+    if file_extension == '.xlsx':
+        # Load the Excel file
+        df = pd.read_excel(file, sheet_name=None, dtype=str)
+        
+        # Convert column names to lowercase
+        for sheet_name in df.keys():
+            df[sheet_name].columns = df[sheet_name].columns.str.lower()
+        
+        # Iterate over each sheet
+        for sheet_name, sheet_df in df.items():
+            # Iterate over each column
+            for column in sheet_df.columns:
+                # Apply replacements if the column is of type string
+                if sheet_df[column].dtype == 'object':
+                    for old_char, new_char in replacements.items():
+                        sheet_df[column] = sheet_df[column].str.replace(old_char, new_char, regex=False)
+                if column in ['landline', 'cell_phone']:
+                    sheet_df[column] = sheet_df[column].fillna('').astype(str)
+        
+        return df, {"success": True}
+        
+    elif file_extension == '.csv':
+        # Load the CSV file
+        df = pd.read_csv(file, dtype=str)
+        
+        # Convert column names to lowercase
+        df.columns = df.columns.str.lower()
+        
+        # Iterate over each column
+        for column in df.columns:
+            # Apply replacements if the column is of type string
+            if df[column].dtype == 'object':
+                for old_char, new_char in replacements.items():
+                    df[column] = df[column].str.replace(old_char, new_char, regex=False)
+            if column in ['landline', 'cell_phone']:
+                df[column] = df[column].fillna('').astype(str)
+        
+        return df, {"success": True}
+
+    else:
+        return None, {"success": False, "error": "Unsupported file format. Please provide an Excel (.xlsx) or CSV (.csv) file."}
+
 
 @csrf_exempt
 def import_file_data(request):
@@ -424,14 +436,17 @@ def import_file_data(request):
                     'company_logo_url': 'company_logo_url',
                 }
 
+                # Convert the column map to use lowercase keys
+                column_map_lower = {key.lower(): value for key, value in column_map.items()}
+
                 new_instances = []
                 duplicate_instances = []
                 is_duplicate = False
 
                 for index, row in df.iterrows():
                     profile_data = {}
-                    for column_name_in_df, field_name_in_model in column_map.items():
-                        value = row.get(column_name_in_df.lower(), None)
+                    for column_name_in_df, field_name_in_model in column_map_lower.items():
+                        value = row.get(column_name_in_df, None)
                         if field_name_in_model == 'person_skills' and value:
                             value = value.split(',')
                         if value == '':
