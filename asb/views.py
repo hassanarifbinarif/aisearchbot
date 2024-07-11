@@ -1377,6 +1377,40 @@ def delete_list(request):
     
     return JsonResponse(context)
 
+@csrf_exempt
+def update_list(request):
+    context = {}
+    if request.method == "PATCH":
+        try:
+            data = json.loads(request.body)
+            print(data)
+            list_id = data.get("list_id", None)
+            list_name = data.get("name", '')
+            list_type = data.get('list_type', '')
+            
+            print(list_id, list_name, list_type)
+            
+            if list_id is not None:
+                old_instance = SavedLists.objects.get(id=list_id)
+                if old_instance:
+                    old_instance.name = list_name
+                    old_instance.save(update_fields=['name'])
+                    context['success'] = True
+                    context['message'] = 'record updated.'
+                else:
+                    context['success'] = False
+                    context['message'] = 'record not found.'
+            else:
+                context['success'] = False
+                context['message'] = 'list id can not be none.'
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = e
+    else:
+        context['success'] = False
+        context['message'] = "Invalid request"
+    return JsonResponse(context)
 
 @csrf_exempt
 def get_recruitment_list(request):
@@ -1389,6 +1423,8 @@ def get_recruitment_list(request):
             records = SavedLists.objects.filter(list_user_id=int(user_id), list_type=SavedLists.Types.RECRUITMENT).order_by('-id')
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
+
+            records = records.filter(Q(name__icontains = search_params))
 
             records_per_page = 20
             paginator = Paginator(records, records_per_page)
@@ -1425,6 +1461,8 @@ def get_prospection_list(request):
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
 
+            records = records.filter(Q(name__icontains = search_params))
+            
             records_per_page = 20
             paginator = Paginator(records, records_per_page)
             page_obj = paginator.get_page(page_number)
@@ -1489,12 +1527,16 @@ def get_list_candidates(request, pk):
             saved_profiles = SavedListProfiles.objects.filter(list=pk).order_by("-created_at")
             profile_ids = saved_profiles.values_list('profile_id', flat=True)
             records = CandidateProfiles.objects.filter(id__in=profile_ids)
+            context['list_id'] = pk
             context['list_name'] = SavedLists.objects.get(pk=pk).name
 
             # Pagination
             page_number = query_dict.get("page", 1)
-            search_params = query_dict.get("q", '')
-
+            search_params = query_dict.get("q", '')   
+            
+            search_query =  Q(full_name__icontains=search_params) | Q(email1__icontains=search_params) | Q(email2__icontains=search_params) | Q(company_name__icontains=search_params) | Q(headline__icontains=search_params) | Q(current_position__icontains=search_params) | Q(person_skills__icontains=search_params) | Q(person_city__icontains=search_params) | Q(person_state__icontains=search_params) | Q(person_country__icontains=search_params) 
+            records = records.filter(search_query)  # Apply search query to the filtered records
+            
             records_per_page = 20
             paginator = Paginator(records, records_per_page)
             page_obj = paginator.get_page(page_number)
@@ -1564,13 +1606,24 @@ def get_list_candidates(request, pk):
 
             context['records'] = records_list
             return JsonResponse(context, status=200)
+        except json.JSONDecodeError:
+            context['success'] = False
+            context['message'] = 'Invalid JSON format!'
+            return JsonResponse(context, status=400)
+        except SavedLists.DoesNotExist:
+            context['success'] = False
+            context['message'] = 'Saved list not found!'
+            return JsonResponse(context, status=404)
         except Exception as e:
             print(e)
             context['success'] = False
             context['message'] = 'Something bad happened!'
             return JsonResponse(context, status=500)
 
-    return JsonResponse(context)
+    context['success'] = False
+    context['message'] = 'Invalid request method!'
+    return JsonResponse(context, status=405)
+
 
 
 @csrf_exempt

@@ -49,6 +49,7 @@ urlpatterns = [
     #saved lists
     path('add-list/', views.add_list, name='add_list'),
     path('delete-list/', views.delete_list, name='delete_list'),
+    path("update-list/", views.update_list, name="update_list"),
     
     path('get-recruitment-list/', views.get_recruitment_list, name='get_recruitment_list'),
     path('get-prospection-list/', views.get_prospection_list, name='get_prospection_list'),
