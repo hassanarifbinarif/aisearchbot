@@ -918,7 +918,10 @@ def search_profile(request):
             # Apply job title filter
             job_query = Q()
             if len(job_titles) == 0:
-                priority_1 = records.none()
+                if keywords != '':
+                    priority_1 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords))
+                else:
+                    priority_1 = records.none()
             else:
                 job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
                 job_query = job_title_queries.pop()
@@ -932,7 +935,10 @@ def search_profile(request):
             
             # Apply job title filter
             if len(skills) == 0:
-                priority_2 = records.none()
+                if keywords != '':
+                    priority_2 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords))
+                else:
+                    priority_2 = records.none()
             else:
                 priority_2 = priority_4.case_insensitive_skills_search(skills)
 
