@@ -1,5 +1,5 @@
 .sidebar {
-    width: 272px;
+    width: 230px;
     height: 100vh;
     background: #070C29;
     display: flex;
@@ -35,8 +35,8 @@
 }
 
 .sidebar-company-content > img {
-    width: 122px;
-    height: 122px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
 }
 
@@ -88,7 +88,7 @@
 
 .sidebar-link {
     width: 100%;
-    height: 48px;
+    height: 40px;
     display: block;
     color: #ABAEC7;
     font-size: 1.125rem;
@@ -131,7 +131,13 @@
     fill: #F1F4F5;
 }
 
+.sidebar-link.active .link-content > svg{
+    width: 20px;
+    height: 20px;
+}
+
 .sidebar-link.active .link-content > span {
+    font-size: 14px;
     color: var(--primary-color);
     font-weight: 600;
 }
@@ -152,7 +158,7 @@
     content: "";
     position: absolute;
     background-color: transparent;
-    top: 48px;
+    top: 40px;
     right: 0;
     height: 35px;
     width: 35px;
@@ -174,7 +180,7 @@
 }
 
 .link-content > span {
-    font-size: 1.125rem;
+    font-size: .875rem;
     font-weight: 400;
     line-height: 23.4px;
     text-align: left;

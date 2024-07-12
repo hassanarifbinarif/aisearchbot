@@ -25,11 +25,11 @@ nav .logo-container {
     justify-content: flex-end;
     align-items: center;
     background: #FFFFFF;
-    height: 70px;
+    height: 50px;
     box-shadow: 0px 0px 5px 2px #7C00F41A;
     position: absolute;
     left: -30px;
-    width: 102%;
+    width: 103%;
 }
 
 .nav-navigations {
@@ -80,8 +80,8 @@ nav .logo-container {
 }
 
 .nav-functions .nav-user-dropdown .nav-user-dropdown-btn > div > img {
-    width: 51px;
-    height: 51px;
+    width: 40px;
+    height: 40px;
     border-radius: 50%;
     background: #D9D9D9;
 }
@@ -97,14 +97,14 @@ nav .logo-container {
 }
 
 .nav-functions .nav-user-dropdown .nav-user-dropdown-btn .nav-user-details > span:first-of-type {
-    font-size: 1rem;
+    font-size: .875rem;
     font-weight: 700;
     line-height: 18px;
     word-wrap: break-word;
 }
 
 .nav-functions .nav-user-dropdown .nav-user-dropdown-btn .nav-user-details > span:last-of-type {
-    font-size: .875rem;
+    font-size: .75rem;
     font-weight: 400;
     line-height: 16px;
     word-break: break-all;
@@ -126,7 +126,7 @@ nav .logo-container {
 }
 
 .nav-functions .nav-user-dropdown .nav-user-dropdown-menu span {
-    font-size: 1rem;
+    font-size: .875rem;
     font-weight: 400;
     line-height: 28px;
 }
@@ -136,7 +136,7 @@ nav .logo-container {
 }
 
 .nav-functions .nav-user-dropdown .nav-user-dropdown-menu .dropdown-item {
-    height: 53px;
+    height: 45px;
     box-shadow: 0px 0px 5px 2px #640EF11A;
     padding: 0px 14px;
     display: flex;

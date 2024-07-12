@@ -10,11 +10,17 @@
 }
 
 .modal-body-details{
-    margin-bottom: 31px;
+    /* margin-bottom: 31px; */
     margin-top: 31px;
 }
+
+.modal-body-details > span {
+    font-size: .875rem;
+}
+
+
 #addUser .modal-content {
-    padding: 30px;
+    padding: 20px;
 }
 
 #addUser .modal-footer,
@@ -27,7 +33,7 @@
 }
 
 #addUser .modal-header > span {
-    font-size: 2.25rem;
+    font-size: 1.25rem;
     font-weight: 700;
     line-height: 61.56px;
     letter-spacing: 0.03em;
@@ -36,6 +42,9 @@
 
 #addUser .modal-body {
     padding: 0px!important;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 #addUser .modal-body .input-wrapper {
@@ -112,6 +121,11 @@
     /* width: 150px;
     height: 150px; */
     flex-shrink: 0;
+    width: 200px;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
 
 #addUser .modal-body .profile-image-container .profile-image-uploader {
@@ -230,22 +244,26 @@
     align-items: center;
     justify-content: center;
     gap: 15px;
-    margin-top: 43px;
+    margin-top: 10px;
 }
 
 #addUser .modal-footer > button {
     /* width: 172px; */
-    height: 55px;
+    height: 45px;
     border: none;
     border-radius: 10px;
     box-shadow: 0px 0px 10px 0px #0C47AF4D;
     color: #FFFFFF;
-    font-size: 1.25rem;
+    font-size: 1rem;
     font-weight: 600;
     line-height: 26px;
     text-align: center;
     padding: 14px 32px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
 }
+
 
 #addUser .modal-footer > button{
     background: #FF0000;

@@ -1,12 +1,12 @@
 .heading-container h1{
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 700;
-    line-height: 54.72px;
+    line-height: 28.72px;
     letter-spacing: 0.03em;
     text-align: center;
 }
 .search-input-container button{
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 500;
     line-height: 20.8px;
     text-align: center;
@@ -36,4 +36,16 @@ button:disabled{
 }
 #company_table{
     min-width: unset;
+}
+.action-btns-container > svg {
+    width: 30px;
+    height: 30px;
+}
+
+.pagination-container {
+    padding-top: 10px;
+}
+
+.pagination-container > div > a{
+    color: #333333;
 }
