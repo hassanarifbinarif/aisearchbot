@@ -42,11 +42,11 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 18px;
+    /* margin-bottom: 18px; */
 }
 
 .personal-info-wrapper .personal-info-header > span {
-    font-size: 20px;
+    font-size: 1.125rem;
     font-weight: 600;
     line-height: 36.4px;
     text-align: left;
@@ -57,17 +57,17 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    margin-bottom: 34px;
+    margin-bottom: 15px;
 }
 
 .personal-info-wrapper .personal-info-header svg {
-    width: 35px;
-    height: 35px;
+    width: 30px;
+    height: 30px;
 }
 
 .personal-info-wrapper .personal-image-container > img {
-    width: 120px;
-    height: 120px;
+    width: 90px;
+    height: 90px;
     border-radius: 50%;
 }
 
@@ -99,7 +99,7 @@
 }
 
 .personal-info-wrapper .account-details .detail-row > div > span {
-    font-size: 1rem;
+    font-size: .875rem;
     font-weight: 600;
     line-height: 30px;
     text-align: left;
