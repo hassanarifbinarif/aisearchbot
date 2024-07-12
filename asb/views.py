@@ -448,6 +448,8 @@ def import_file_data(request):
                         value = row.get(column_name_in_df, None)
                         if field_name_in_model == 'person_skills' and value:
                             value = value.split(',')
+                        if (field_name_in_model == 'company_size_from' or field_name_in_model == 'company_size_to') and value:
+                            value = int(float(value))
                         if value == '':
                             value = None
                         profile_data[field_name_in_model] = value
