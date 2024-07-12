@@ -1,8 +1,8 @@
 .main-content{
-    padding: 30px;
+    padding: 20px 30px 0px 30px;
     position: absolute;
     bottom: 0px;
-    top: 70px;
+    top: 50px;
     width: 100%;
 }
 
@@ -13,8 +13,8 @@
     gap: 20px;
 }
 .back-btn {
-    width: 50px;
-    height: 50px;
+    width: 40px;
+    height: 40px;
     border-radius: 4px;
     flex-shrink: 0;
     border: 3px solid var(--primary-color);
@@ -33,9 +33,9 @@
 }
 
 .heading-container h1{
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 700;
-    line-height: 36px;
+    line-height: 28px;
     letter-spacing: 0.03em;
     text-align: left;
 }
@@ -52,7 +52,7 @@
 .search-input-container svg{
     position: absolute;
     left: 10px;
-    top: 17px;
+    top: 10px;
 }
 .search-input-container input:focus{
     border: 1px solid var(--primary-color);
@@ -61,12 +61,13 @@
 .search{
     max-width: 412px;
     width: 100%;
-    height: 55px;
+    height: 45px;
     padding-left: 40px;
     border-radius: 10px;
     background: #FFFFFF;
     box-shadow: 0px 0px 5px 2px #006DEF1A;
     border: none;
+    font-size: .875rem;
 }
 
 .import-export-btns-container{
@@ -88,6 +89,7 @@
 
 .table-responsive{
     margin-top: 20px;
+    padding-top: 5px;
 }
 #company_table {
     border: none!important;
@@ -166,6 +168,11 @@ td a{
     justify-content: center;
     align-items: center;
     gap: 4px;
+}
+
+.action-btns-container > svg {
+    width: 35px;
+    height: 35px;
 }
 
 /* tbody tr:nth-child(4n+1),

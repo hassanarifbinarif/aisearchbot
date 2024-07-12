@@ -552,7 +552,7 @@ def get_candidate_data(request, params):
         combined_filter = reduce(operator.or_, q_objects)
 
         users = CandidateProfiles.objects.filter(combined_filter).order_by('-id')
-        paginator = Paginator(users, 12)
+        paginator = Paginator(users, 20)
         page_obj = paginator.get_page(page_number)
         context['current_page'] = page_obj.number
         context['total_pages'] = paginator.num_pages

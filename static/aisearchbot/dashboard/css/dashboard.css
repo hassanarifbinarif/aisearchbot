@@ -1,8 +1,8 @@
 .main-content{
-    padding: 30px;
+    padding: 20px 30px 10px 30px;
     position: absolute;
     bottom: 0px;
-    top: 70px;
+    top: 50px;
     width: 100%;
 }
 
@@ -13,7 +13,7 @@ input[type="file"]{
 .import-export-btns {
     /* width: 100%; */
     width: 230px;
-    height: 55px;
+    height: 45px;
     border-radius: 10px;
     background: var(--primary-color);
     color: white;
@@ -22,19 +22,25 @@ input[type="file"]{
     display: flex;
     justify-content: center;
     align-items: center;
+    font-size: .875rem;
 }
 
 #importfile > span {
     color: #FFFFFF;
 }
 
+#importfile > .spinner-border {
+    width: 1.5rem;
+    height: 1.5rem;
+}
+
 .heaing-container h1{
-    font-size: 32px;
+    font-size: 20px;
     font-weight: 700;
-    line-height: 54.72px;
+    line-height: 28.72px;
     letter-spacing: 0.03em;
     text-align: center;
-
+    margin: 0;
 }
 .search-action-btn-container{
     display: flex;
@@ -48,7 +54,7 @@ input[type="file"]{
 .search-input-container svg{
     position: absolute;
     left: 10px;
-    top: 17px;
+    top: 10px;
 }
 .search-input-container input:focus{
     border: 1px solid var(--primary-color);
@@ -56,12 +62,13 @@ input[type="file"]{
 }
 .search{
     width: 412px;
-    height: 55px;
+    height: 45px;
     padding-left: 40px;
     border-radius: 10px;
     background: #FFFFFF;
     box-shadow: 0px 0px 5px 2px #006DEF1A;
     border: none;
+    font-size: .875rem;
 }
 
 .import-export-btns-container{
@@ -82,6 +89,8 @@ input[type="file"]{
 
 .table-responsive{
     margin-top: 20px;
+    height: calc(100vh - 185px);
+    padding-top: 5px;
 }
 
 table {
@@ -97,7 +106,7 @@ table {
 }
 
 tr {
-    min-height: 60px;
+    /* min-height: 60px; */
     text-align: center;
     vertical-align: middle;
     box-shadow: 0px 0px 5px 2px rgba(100, 14, 241, 0.1);
@@ -113,20 +122,23 @@ th:first-of-type {
 th:last-of-type {
     border-top-right-radius: 10px;
 }
-thead tr {
-    height: 70px;
+tr {
+    height: 45px !important;
 }
 thead tr > th{
     color: white;
-    font-size: 18px;
+    font-size: 16px;
     font-weight: 600;
     line-height: 27px;
     padding-left: 0px!important;
     padding-right: 0px!important;
 }
+tbody tr {
+    height: 45px !important;
+}
 tr td{
     text-align: center;
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 400;
     line-height: 16px;
     text-align: center;
@@ -136,15 +148,15 @@ tr td{
 }
 td a{
     color: var(--primary-color);
-    font-size: 16px;
+    font-size: 14px;
     font-weight: 600;
     line-height: 24px;
     text-align: center;
 
 }
 .item-img{
-    width: 51px;
-    height: 51px;
+    width: 30px;
+    height: 30px;
     border-radius: 50%;
     background: #D9D9D9;
 }
@@ -159,8 +171,8 @@ td a{
     align-items: center;
     gap: 5px;
     flex-wrap: wrap;
-    min-height: 43px;
-    max-height: 55px;
+    min-height: 25px;
+    max-height: 25px;
     overflow: auto;
     word-break: break-all;
 }
@@ -181,9 +193,9 @@ td a{
 } */
 #user-count{
     /* position: absolute !important; */
-    top: 30%;
+    top: 17%;
     /* right: -28px; */
-    left: 116px;
+    left: 72px;
     font-size: 12px;
 }
 
@@ -223,15 +235,24 @@ td a{
     border: 1px solid #7C00F41A;
     border-radius: 5px;
     color: #333333;
-    font-size: .813;
-    font-weight: 600;
+    font-size: .75rem;
+    font-weight: 500;
     line-height: 19.5px;
     width: 32px;
     height: 32px;
 }
+
+
+.pagination-div  {
+    padding-top: unset;
+    padding-bottom: unset;
+}
 @media (max-width: 1920px) {
     thead tr > th{
         font-size: 15px;
+    }
+    thead tr > th> span {
+        font-size: inherit;
     }
     thead tr > th svg{
         width: 15px;

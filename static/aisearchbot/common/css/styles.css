@@ -270,10 +270,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 .main-page {
     position: relative;
-    left: 272px;
+    left: 230px;
     min-height: 100vh;
     /* padding: 0px 20px 0px 20px; */
-    width: calc(100vw - 272px);
+    width: calc(100vw - 230px);
 }
 
 .main-page > .header {
