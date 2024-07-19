@@ -5,6 +5,7 @@ import pandas as pd
 from django.template import loader
 from collections import Counter
 from django.db.models import Q, F, Value, IntegerField, Count
+from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
 from aisearchbot.helpers import send_verification_code_email, send_account_credentials_email
@@ -710,12 +711,24 @@ def build_whole_word_regex(keywords):
     return rf'(?i)({keywords_pattern})'
 
 
-def build_keyword_query(keyword, fields):
+def build_keyword_query(keyword, fields, array_fields=None):
     regex_pattern = build_whole_word_regex(keyword)
     query = Q()
     for field in fields:
         query |= Q(**{f'{field}__regex': regex_pattern})
     
+    if array_fields:
+        for array_field in array_fields:
+            # Annotate the queryset with a subquery to filter the array field elements
+            subquery = Subquery(
+                CandidateProfiles.objects.filter(
+                        pk=OuterRef('pk'),
+                        **{f'{array_field}__regex': regex_pattern}
+                    )
+                    .values_list('pk', flat=True)[:1]
+            )
+            query |= Q(pk__in=subquery)
+
     return query
 
 
@@ -746,6 +759,9 @@ def search_profile(request):
             company_size_from = query_dict.get('size_from', None)
             company_size_to = query_dict.get('size_to', None)
             contact_name = query_dict.get('contact_name', '')
+            job_skill_list = job_titles + skills
+
+            print(query_dict)
 
             if company_size_from in ["", "null"]:
                 company_size_from = None
@@ -897,64 +913,67 @@ def search_profile(request):
             # print('here', ab.count())
             
             # Create the query for job titles
-            job_title_query = Q()
-            if len(job_titles) > 0:
-                job_title_queries = [
-                    Q(full_name__icontains=term) | Q(first_name__icontains=term) |
-                    Q(last_name__icontains=term) | Q(headline__icontains=term) |
-                    Q(current_position__icontains=term) | Q(company_name__icontains=term) |
-                    Q(person_city__icontains=term) | Q(person_state__icontains=term) |
-                    Q(person_country__icontains=term) | Q(person_industry__icontains=term) |
-                    Q(tags__icontains=term) | Q(person_skills__icontains=term) |
-                    Q(education_experience__icontains=term) | Q(company_website__icontains=term) |
-                    Q(email1__icontains=term) | Q(email2__icontains=term) |
-                    Q(phone1__icontains=term) | Q(phone2__icontains=term) |
-                    Q(person_linkedin_url__icontains=term) | Q(company_city__icontains=term) |
-                    Q(company_state__icontains=term) | Q(company_country__icontains=term) |
-                    Q(person_angellist_url__icontains=term) | Q(person_crunchbase_url__icontains=term) |
-                    Q(person_twitter_url__icontains=term) | Q(person_facebook_url__icontains=term) |
-                    Q(company_linkedin_url__icontains=term)
-                    for term in job_titles
-                ]
-                job_title_query = job_title_queries.pop()
-                for q in job_title_queries:
-                    job_title_query |= q
+            # job_title_query = Q()
+            # if len(job_titles) > 0:
+            #     job_title_queries = [
+            #         Q(full_name__icontains=term) | Q(first_name__icontains=term) |
+            #         Q(last_name__icontains=term) | Q(headline__icontains=term) |
+            #         Q(current_position__icontains=term) | Q(company_name__icontains=term) |
+            #         Q(person_city__icontains=term) | Q(person_state__icontains=term) |
+            #         Q(person_country__icontains=term) | Q(person_industry__icontains=term) |
+            #         Q(tags__icontains=term) | Q(person_skills__icontains=term) |
+            #         Q(education_experience__icontains=term) | Q(company_website__icontains=term) |
+            #         Q(email1__icontains=term) | Q(email2__icontains=term) |
+            #         Q(phone1__icontains=term) | Q(phone2__icontains=term) |
+            #         Q(person_linkedin_url__icontains=term) | Q(company_city__icontains=term) |
+            #         Q(company_state__icontains=term) | Q(company_country__icontains=term) |
+            #         Q(person_angellist_url__icontains=term) | Q(person_crunchbase_url__icontains=term) |
+            #         Q(person_twitter_url__icontains=term) | Q(person_facebook_url__icontains=term) |
+            #         Q(company_linkedin_url__icontains=term)
+            #         for term in job_titles
+            #     ]
+            #     job_title_query = job_title_queries.pop()
+            #     for q in job_title_queries:
+            #         job_title_query |= q
             
             # Create the query for skills
-            skills_query = Q()
-            if len(skills) > 0:
-                skills_queries = [
-                    Q(full_name__icontains=skill) | Q(first_name__icontains=skill) |
-                    Q(last_name__icontains=skill) | Q(headline__icontains=skill) |
-                    Q(current_position__icontains=skill) | Q(company_name__icontains=skill) |
-                    Q(person_city__icontains=skill) | Q(person_state__icontains=skill) |
-                    Q(person_country__icontains=skill) | Q(person_industry__icontains=skill) |
-                    Q(tags__icontains=skill) | Q(person_skills__icontains=skill) |
-                    Q(education_experience__icontains=skill) | Q(company_website__icontains=skill) |
-                    Q(email1__icontains=skill) | Q(email2__icontains=skill) |
-                    Q(phone1__icontains=skill) | Q(phone2__icontains=skill) |
-                    Q(person_linkedin_url__icontains=skill) | Q(company_city__icontains=skill) |
-                    Q(company_state__icontains=skill) | Q(company_country__icontains=skill) |
-                    Q(person_angellist_url__icontains=skill) | Q(person_crunchbase_url__icontains=skill) |
-                    Q(person_twitter_url__icontains=skill) | Q(person_facebook_url__icontains=skill) |
-                    Q(company_linkedin_url__icontains=skill)
-                    for skill in skills
+            combined_keyword_query = Q()
+            if len(job_skill_list) > 0:
+                combined_keyword_queries = [
+                    Q(full_name__icontains=job_skill) | Q(first_name__icontains=job_skill) |
+                    Q(last_name__icontains=job_skill) | Q(headline__icontains=job_skill) |
+                    Q(current_position__icontains=job_skill) | Q(company_name__icontains=job_skill) |
+                    Q(person_city__icontains=job_skill) | Q(person_state__icontains=job_skill) |
+                    Q(person_country__icontains=job_skill) | Q(person_industry__icontains=job_skill) |
+                    Q(tags__icontains=job_skill)
+                    # Q(person_skills__icontains=job_skill)
+                    for job_skill in job_skill_list
                 ]
-                skills_query = skills_queries.pop()
-                for q in skills_queries:
-                    skills_query |= q
+                combined_keyword_query = combined_keyword_queries.pop()
+                for q in combined_keyword_queries:
+                    combined_keyword_query |= q
             
-            priority_4 = records.filter(keyword_query | job_title_query | skills_query)
+            key_q = build_keyword_query(keywords, ['headline', 'current_position'])
+            j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
+            
+            if keywords != '':
+                # priority_4 = records.filter(key_q | combined_keyword_query)
+                priority_4 = records.filter(key_q | j_s_queries)
+            else:
+                priority_4 = records.filter(combined_keyword_query)
+                priority_4 = records.filter(j_s_queries)
             print('Priority 4 ', priority_4.count())
 
-            priority_3 = records.filter(keyword_query & job_title_query & skills_query)
+            if keywords != '':
+                priority_3 = priority_4.filter(key_q & combined_keyword_query)
+            else:
+                priority_3 = priority_4.filter(combined_keyword_query)
             print('Priority 3 ', priority_3.count())
 
             # For priority 1
             
             # Apply job title filter
             job_query = Q()
-            key_q = build_keyword_query(keywords, ['headline', 'current_position'])
             if len(job_titles) == 0:
                 if keywords != '':
                     priority_1 = priority_4.filter(key_q)
@@ -969,13 +988,20 @@ def search_profile(request):
                 #     job_query |= q
                 # records = records.filter(job_query)
                 # priority_1 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords), job_query)
-                print('here')
                 priority_1 = priority_4.filter(key_q, job_title_queries)
             print('Priority 1 ', priority_1.count())
 
             # For priority 2
+
+            # if len(job_skill_list) == 0:
+            #     if keywords != '':
+            #         priority_2 = priority_4.filter(key_q)
+            #     else:
+            #         priority_2 = records.none()
+            # else:
+            #     job_skills_query = build_keyword_query(job_skill_list, ['headline', 'current_position', 'person_skills'])
+            #     priority_2 = priority_4.filter(job_skills_query)
             
-            # Apply job title filter
             if len(skills) == 0:
                 if keywords != '':
                     priority_2 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords))
@@ -1097,7 +1123,7 @@ def search_profile(request):
             #             item['is_opened'] = True
             #     except Exception as e:
             #         print(e)
-            page_obj = update_country(page_obj_dicts, location)
+            # page_obj = update_country(page_obj_dicts, location)
             total_records = len(combined_records)
 
             context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
