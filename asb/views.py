@@ -773,7 +773,9 @@ def search_profile(request):
             )
             print('Initial count ', records.count())
 
-            if len(location) > 0:
+            is_france = any(loc.lower() == 'france' for loc in location)
+
+            if len(location) > 0 and is_france == False:
                 normalized_location_string = []
                 hyphenated_location_string = []
                 location = [loc.lower() for loc in location]
