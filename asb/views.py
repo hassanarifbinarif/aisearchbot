@@ -1018,7 +1018,7 @@ def search_profile(request):
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
             # print('Priority 1 ', priority_1.count())
 
-            combined_records = priority_4.order_by('priority')
+            combined_records = priority_4.order_by('priority', '-id')
 
             # Pagination
             page_number = query_dict.get("page", 1)
