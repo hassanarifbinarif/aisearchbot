@@ -787,9 +787,10 @@ def search_profile(request):
                 personState=Lower('person_state'),
                 personCountry=Lower('person_country')
             )
-            print('Initial count ', records.count())
+            # print('Initial count ', records.count())
 
             is_france = any(loc.lower() == 'france' for loc in location)
+            
 
             if len(location) > 0 and is_france == False:
                 normalized_location_string = []
@@ -838,7 +839,7 @@ def search_profile(request):
                         Q(personState__in=city_codes) |
                         Q(personCountry__in=city_codes)
                     )
-            print('After location search ', records.count())
+            # print('After location search ', records.count())
 
             # Apply company name filter
             if len(company_names) > 0:
@@ -847,7 +848,7 @@ def search_profile(request):
                 for q in company_name_queries:
                     company_name_query |= q
                 records = records.filter(company_name_query)
-            print('After company name ', records.count())
+            # print('After company name ', records.count())
             
             # Apply company size filter
             if len(company_size_ranges) > 0:
@@ -869,7 +870,7 @@ def search_profile(request):
                         company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
                 valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
                 records = records.filter(company_size_query & valid_data_query)
-            print('After company size ', records.count())
+            # print('After company size ', records.count())
 
             # Apply contact details filter
             if len(contact_details) > 0:
@@ -884,11 +885,11 @@ def search_profile(request):
                         elif operation == 'and':
                             query &= q
                 records = records.filter(query)
-            print('After contact details ', records.count())
+            # print('After contact details ', records.count())
             
             # Apply contact name filter
             records = records.filter(Q(full_name__icontains=contact_name) | Q(first_name__icontains=contact_name) | Q(last_name__icontains=contact_name))
-            print('After contact name ', records.count())
+            # print('After contact name ', records.count())
 
             keyword_query = build_keyword_query(keywords, keyword_fields)
                 
@@ -962,13 +963,13 @@ def search_profile(request):
             else:
                 priority_4 = records.filter(combined_keyword_query)
                 priority_4 = records.filter(j_s_queries)
-            print('Priority 4 ', priority_4.count())
+            # print('Priority 4 ', priority_4.count())
 
             if keywords != '':
                 priority_3 = priority_4.filter(key_q & combined_keyword_query)
             else:
                 priority_3 = priority_4.filter(combined_keyword_query)
-            print('Priority 3 ', priority_3.count())
+            # print('Priority 3 ', priority_3.count())
 
             # For priority 1
             
@@ -989,7 +990,7 @@ def search_profile(request):
                 # records = records.filter(job_query)
                 # priority_1 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords), job_query)
                 priority_1 = priority_4.filter(key_q, job_title_queries)
-            print('Priority 1 ', priority_1.count())
+            # print('Priority 1 ', priority_1.count())
 
             # For priority 2
 
@@ -1010,7 +1011,7 @@ def search_profile(request):
             else:
                 priority_2 = priority_4.case_insensitive_skills_search(skills)
 
-            print('Priority 2 ', priority_2.count())
+            # print('Priority 2 ', priority_2.count())
 
             # combined_records = priority_1 | priority_2 | priority_3 | priority_4
             # combined_records = combined_records.distinct()
@@ -1024,7 +1025,7 @@ def search_profile(request):
             # Convert merged queryset to set to ensure distinctness
             unique_records = list(set(merged_queryset))
             combined_records = sorted(unique_records, key=lambda x: x.priority)
-            print(len(combined_records))
+            # print(len(combined_records))
 
 
             # Pagination
