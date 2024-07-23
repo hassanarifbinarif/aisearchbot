@@ -82,7 +82,7 @@ class CandidateProfilesQuerySet(models.QuerySet):
         for value in search_values:
             conditions |= Q(person_skills__icontains=value)
         
-        return self.filter(conditions)
+        return conditions
 
 class CandidateProfilesManager(models.Manager):
     def get_queryset(self):

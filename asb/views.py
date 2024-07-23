@@ -1,10 +1,11 @@
 import json
 import os
 import operator
+import time
 import pandas as pd
 from django.template import loader
 from collections import Counter
-from django.db.models import Q, F, Value, IntegerField, Count
+from django.db.models import Q, F, Value, IntegerField, Count, When, Case
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
@@ -707,12 +708,17 @@ def build_whole_word_regex(keywords):
     # return rf'(?i)(?<!\w){keyword}(?!\w)'
     if isinstance(keywords, str):
         keywords = [keywords]
+    if not keywords:
+        return None
     keywords_pattern = '|'.join(rf'(?<!\w){keyword}(?!\w)' for keyword in keywords)
     return rf'(?i)({keywords_pattern})'
 
 
 def build_keyword_query(keyword, fields, array_fields=None):
     regex_pattern = build_whole_word_regex(keyword)
+    if not regex_pattern:
+        return Q()
+    
     query = Q()
     for field in fields:
         query |= Q(**{f'{field}__regex': regex_pattern})
@@ -735,10 +741,8 @@ def build_keyword_query(keyword, fields, array_fields=None):
 keyword_fields = [
     'full_name', 'first_name', 'last_name', 'headline', 'current_position', 
     'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
-    'tags', 'person_skills', 'education_experience', 'company_website', 'email1', 
-    'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_city', 
-    'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url', 
-    'person_twitter_url', 'person_facebook_url', 'company_linkedin_url'
+    'tags', 'person_skills', 'education_experience', 'email1', 'email2', 'phone1', 'phone2',
+    'company_city', 'company_state', 'company_country'
 ]
 
 
@@ -747,6 +751,7 @@ def search_profile(request):
     context = {}
     if request.method == 'POST':
         try:
+            start_time = time.time()
             query_dict = json.loads(request.body)
             user = query_dict.get('user_id', None)
             keywords = query_dict.get('keywords', '').lower()
@@ -790,8 +795,6 @@ def search_profile(request):
             # print('Initial count ', records.count())
 
             is_france = any(loc.lower() == 'france' for loc in location)
-            
-
             if len(location) > 0 and is_france == False:
                 normalized_location_string = []
                 hyphenated_location_string = []
@@ -839,7 +842,7 @@ def search_profile(request):
                         Q(personState__in=city_codes) |
                         Q(personCountry__in=city_codes)
                     )
-            # print('After location search ', records.count())
+            print('After location search ', records.count())
 
             # Apply company name filter
             if len(company_names) > 0:
@@ -892,26 +895,6 @@ def search_profile(request):
             # print('After contact name ', records.count())
 
             keyword_query = build_keyword_query(keywords, keyword_fields)
-                
-            # keyword_query = (
-            #     Q(full_name__icontains=keywords) | Q(first_name__icontains=keywords) |
-            #     Q(last_name__icontains=keywords) | Q(headline__icontains=keywords) |
-            #     Q(current_position__icontains=keywords) | Q(company_name__icontains=keywords) |
-            #     Q(person_city__icontains=keywords) | Q(person_state__icontains=keywords) |
-            #     Q(person_country__icontains=keywords) | Q(person_industry__icontains=keywords) |
-            #     Q(tags__icontains=keywords) | Q(person_skills__icontains=keywords) |
-            #     Q(education_experience__icontains=keywords) | Q(company_website__icontains=keywords) |
-            #     Q(email1__icontains=keywords) | Q(email2__icontains=keywords) |
-            #     Q(phone1__icontains=keywords) | Q(phone2__icontains=keywords) |
-            #     Q(person_linkedin_url__icontains=keywords) | Q(company_city__icontains=keywords) |
-            #     Q(company_state__icontains=keywords) | Q(company_country__icontains=keywords) |
-            #     Q(person_angellist_url__icontains=keywords) | Q(person_crunchbase_url__icontains=keywords) |
-            #     Q(person_twitter_url__icontains=keywords) | Q(person_facebook_url__icontains=keywords) |
-            #     Q(company_linkedin_url__icontains=keywords)
-            # )
-
-            # ab = CandidateProfiles.objects.filter(keyword_query)
-            # print('here', ab.count())
             
             # Create the query for job titles
             # job_title_query = Q()
@@ -958,39 +941,28 @@ def search_profile(request):
             j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
             
             if keywords != '':
-                # priority_4 = records.filter(key_q | combined_keyword_query)
-                priority_4 = records.filter(key_q | j_s_queries)
+                priority_4 = records.filter(keyword_query | j_s_queries).annotate(priority=Value(4, output_field=IntegerField()))
             else:
-                priority_4 = records.filter(combined_keyword_query)
-                priority_4 = records.filter(j_s_queries)
+                priority_4 = records.filter(j_s_queries).annotate(priority=Value(4, output_field=IntegerField()))
             # print('Priority 4 ', priority_4.count())
 
+            # For priority 3
             if keywords != '':
-                priority_3 = priority_4.filter(key_q & combined_keyword_query)
+                priority_4 = priority_4.annotate(
+                    priority=Case(
+                        When(key_q & combined_keyword_query, then=Value(3)),
+                        output_field=IntegerField(),
+                    )
+                )
+                # priority_4 = priority_4.filter(key_q & combined_keyword_query).annotate(priority=Value(3, output_field=IntegerField()))
             else:
-                priority_3 = priority_4.filter(combined_keyword_query)
+                priority_4 = priority_4.annotate(
+                    priority=Case(
+                        When(combined_keyword_query, then=Value(3)),
+                        output_field=IntegerField(),
+                    )
+                )
             # print('Priority 3 ', priority_3.count())
-
-            # For priority 1
-            
-            # Apply job title filter
-            job_query = Q()
-            if len(job_titles) == 0:
-                if keywords != '':
-                    priority_1 = priority_4.filter(key_q)
-                    # priority_1 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords))
-                else:
-                    priority_1 = records.none()
-            else:
-                job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
-                # job_title_queries = [Q(headline__icontains=term) | Q(current_position__icontains=term) for term in job_titles]
-                # job_query = job_title_queries.pop()
-                # for q in job_title_queries:
-                #     job_query |= q
-                # records = records.filter(job_query)
-                # priority_1 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords), job_query)
-                priority_1 = priority_4.filter(key_q, job_title_queries)
-            # print('Priority 1 ', priority_1.count())
 
             # For priority 2
 
@@ -1005,28 +977,48 @@ def search_profile(request):
             
             if len(skills) == 0:
                 if keywords != '':
-                    priority_2 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords))
-                else:
-                    priority_2 = records.none()
+                    priority_4 = priority_4.annotate(
+                        priority=Case(
+                            When(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords), then=Value(2)),
+                            output_field=IntegerField(),
+                        )
+                    )
+                    # priority_2 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords))
+                # else:
+                #     priority_2 = records.none()
             else:
-                priority_2 = priority_4.case_insensitive_skills_search(skills)
-
+                priority_2_conditions = priority_4.model.objects.case_insensitive_skills_search(skills)
+                priority_4 = priority_4.annotate(
+                    priority=Case(
+                        When(priority_2_conditions, then=Value(2)),
+                        output_field=IntegerField(),
+                    )
+                )
+                # priority_2 = priority_4.case_insensitive_skills_search(skills)
             # print('Priority 2 ', priority_2.count())
 
-            # combined_records = priority_1 | priority_2 | priority_3 | priority_4
-            # combined_records = combined_records.distinct()
-            # combined_records = priority_1.union(priority_2, all=False).union(priority_3, all=False).union(priority_4, all=False)
-            priority_1 = priority_1.annotate(priority=Value(1, output_field=IntegerField()))
-            priority_2 = priority_2.annotate(priority=Value(2, output_field=IntegerField()))
-            priority_3 = priority_3.annotate(priority=Value(3, output_field=IntegerField()))
-            priority_4 = priority_4.annotate(priority=Value(4, output_field=IntegerField()))
-            merged_queryset = list(chain(priority_1, priority_2, priority_3, priority_4))
+            # For priority 1            
+            # Apply job title filter
+            if len(job_titles) == 0:
+                if keywords != '':
+                    priority_4 = priority_4.annotate(
+                        priority=Case(
+                            When(key_q, then=Value(1)),
+                            output_field=IntegerField(),
+                        )
+                    )
+            else:
+                job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
+                priority_4 = priority_4.annotate(
+                    priority=Case(
+                        When(key_q & job_title_queries, then=Value(1)),
+                        output_field=IntegerField(),
+                    )
+                )
+                # priority_1 = priority_4.filter(key_q, job_title_queries)
+            # print('Priority 1 ', priority_1.count())
 
-            # Convert merged queryset to set to ensure distinctness
-            unique_records = list(set(merged_queryset))
-            combined_records = sorted(unique_records, key=lambda x: x.priority)
-            # print(len(combined_records))
-
+            combined_records = priority_4.order_by('priority')
 
             # Pagination
             page_number = query_dict.get("page", 1)
@@ -1039,60 +1031,15 @@ def search_profile(request):
             context['has_previous'] = page_obj.has_previous()
 
             # Prepare results
-            # page_obj = list(page_obj.object_list.values(*search_fields))
-
-            page_obj_dicts = [
-                {
-                    'id': item.id,
-                    'full_name': item.full_name,
-                    'first_name': item.first_name,
-                    'last_name': item.last_name,
-                    'headline': item.headline,
-                    'current_position': item.current_position,
-                    'company_name': item.company_name,
-                    'person_city': item.person_city,
-                    'person_state': item.person_state,
-                    'person_country': item.person_country,
-                    'person_industry': item.person_industry,
-                    'tags': item.tags,
-                    'person_skills': item.person_skills,
-                    'education_experience': item.education_experience,
-                    'company_website': item.company_website,
-                    'email1': item.email1,
-                    'email2': item.email2,
-                    'phone1': item.phone1,
-                    'phone2': item.phone2,
-                    'person_linkedin_url': item.person_linkedin_url,
-                    'company_size_from': item.company_size_from,
-                    'company_size_to': item.company_size_to,
-                    'current_position_2': item.current_position_2,
-                    'current_company_2': item.current_company_2,
-                    'previous_position_2': item.previous_position_2,
-                    'previous_company_2': item.previous_company_2,
-                    'previous_position_3': item.previous_position_3,
-                    'previous_company_3': item.previous_company_3,
-                    'company_city': item.company_city,
-                    'company_state': item.company_state,
-                    'company_country': item.company_country,
-                    'person_angellist_url': item.person_angellist_url,
-                    'person_crunchbase_url': item.person_crunchbase_url,
-                    'person_twitter_url': item.person_twitter_url,
-                    'person_facebook_url': item.person_facebook_url,
-                    'company_linkedin_url': item.company_linkedin_url,
-                    'person_image_url': item.person_image_url,
-                    'company_logo_url': item.company_logo_url,
-                    'show_email1': False,
-                    'show_email2': False,
-                    'show_phone1': False,
-                    'show_phone2': False,
-                    'is_favourite': False,
-                    'is_opened': False,
-                    'is_saved': CandidateProfiles.is_saved_for_user(item.id, user),
-                }
-                for item in page_obj
-            ]
-
-            for item in page_obj_dicts:
+            page_obj = list(page_obj.object_list.values(*search_fields))
+            for item in page_obj:
+                item['show_email1'] = False
+                item['show_email2'] = False
+                item['show_phone1'] = False
+                item['show_phone2'] = False
+                item['is_favourite'] = False
+                item['is_opened'] = False
+                item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
                 try:
                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
                     item['show_email1'] = profile_visibility.show_email1
@@ -1104,34 +1051,20 @@ def search_profile(request):
                         item['is_opened'] = True
                 except Exception as e:
                     print(e)
-
-            # for item in page_obj:
-            #     item['show_email1'] = False
-            #     item['show_email2'] = False
-            #     item['show_phone1'] = False
-            #     item['show_phone2'] = False
-            #     item['is_favourite'] = False
-            #     item['is_opened'] = False
-            #     # item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
-            #     try:
-            #         profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
-            #         item['show_email1'] = profile_visibility.show_email1
-            #         item['show_email2'] = profile_visibility.show_email2
-            #         item['show_phone1'] = profile_visibility.show_phone1
-            #         item['show_phone2'] = profile_visibility.show_phone2
-            #         item['is_favourite'] = profile_visibility.is_favourite
-            #         if item['show_email1'] or item['show_email2'] or item['show_phone1'] or item['show_phone2']:
-            #             item['is_opened'] = True
-            #     except Exception as e:
-            #         print(e)
             # page_obj = update_country(page_obj_dicts, location)
-            total_records = len(combined_records)
+            page_obj = update_country(page_obj, location)
+            
+            # total_records = len(combined_records)
+            total_records = combined_records.count()
+            optimized_duration = time.time() - start_time
+            print(f"Code Duration: {optimized_duration:.6f} seconds")
 
             context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
             context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
             context['records_count'] = total_records
-            context['records'] = page_obj_dicts
+            # context['records'] = page_obj_dicts
+            context['records'] = page_obj
             return JsonResponse(context, status=200)
 
         except Exception as e:
