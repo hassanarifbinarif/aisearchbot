@@ -40,6 +40,8 @@ urlpatterns = [
     path('get-favourite-profiles/', views.get_favourite_profiles, name='get_favourite_profiles'),
     path('get-opened-profiles/', views.get_opened_profiles, name='get_opened_profiles'),
 
+    path('del-candidate/<int:pk>/', views.delete_specific_candidates, name='delete_specific_candidates'),
+
     path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
     path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
 

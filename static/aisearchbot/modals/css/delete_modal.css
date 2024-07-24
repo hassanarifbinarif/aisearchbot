@@ -1,0 +1,85 @@
+#delModal .modal-dialog {
+    max-width: unset;
+    width: 514px;
+}
+
+#delModal .modal-header {
+    padding: 0!important;
+    border-radius: 15px!important;
+
+}
+
+#delModal .modal-content {
+    padding: 30px;
+    border: none;
+}
+
+#delModal .modal-footer,
+#delModal .modal-content {
+    border-radius: 15px!important;
+}
+
+#delModal .modal-header {
+    margin-bottom: 20px;
+}
+
+#delModal .modal-header > span {
+    font-size: 1.5rem;
+    font-weight: 700;
+    line-height: 44.56px;
+    letter-spacing: 0.03em;
+    text-align: center;
+}
+
+#delModal .modal-body {
+    padding: 0px!important;
+}
+
+#delModal .modal-body > p {
+    font-size: 1rem;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 20px;
+    margin-bottom: 0px;
+}
+
+#delModal .error-div {
+    text-align: left;
+    /* padding: 0px 30px; */
+    /* margin-top: 5px; */
+}
+
+
+#delModal .modal-footer {
+    padding: 0px!important;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 43px;
+}
+
+#delModal .modal-footer > button {
+    width: 172px;
+    height: 45px;
+    border: none;
+    border-radius: 10px;
+    box-shadow: 0px 0px 10px 0px #0C47AF4D;
+    color: #FFFFFF;
+    font-size: 1.125rem;
+    font-weight: 600;
+    line-height: 26px;
+    text-align: center;
+}
+
+#delModal .modal-footer > button:first-of-type {
+    background: #FF0000;
+}
+
+#delModal .modal-footer > button:last-of-type {
+    background: var(--primary-color);
+}
+
+#delModal .modal-footer > button > span {
+    color: #FFFFFF;
+}

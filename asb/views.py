@@ -457,8 +457,10 @@ def import_file_data(request):
                         profile_data[field_name_in_model] = value
                     
                     email = profile_data['email1']
+                    linkedin_url = profile_data['person_linkedin_url']
                     try:
-                        original_profile = CandidateProfiles.objects.filter(email1=email, email1__isnull=False).first()
+                        original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email) | Q(person_linkedin_url=linkedin_url), email1__isnull=False).first()
+                        print(original_profile)
                         if original_profile:
                             profile_data['original_profile'] = original_profile
                             duplicate_instances.append(profile_data)
@@ -648,34 +650,6 @@ def resolve_conflict(request):
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
-
-def filter_location(location, records, allow_null_first_iteration=False):
-    normalized_location_string = location.replace('-', ' ')
-    hyphenated_location_string = location.replace(' ', '-')
-    matching_locations = LocationDetails.objects.filter(
-        Q(region_name__icontains=location) | Q(region_name__icontains=normalized_location_string) | 
-        Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=location) |
-        Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
-    )
-    city_labels = matching_locations.values_list('label', flat=True)
-    city_codes = matching_locations.values_list('city_code', flat=True)
-
-    normalized_city_labels = []
-    hyphenated_city_labels = []
-    for label in city_labels:
-        normalized_city_labels.append(label.replace('-', ' ').lower())
-        hyphenated_city_labels.append(label.replace(' ', '-').lower())
-
-    location_filter_query = Q(personCity__icontains=location) | Q(personState__icontains=location) | Q(personCountry__icontains=location) | Q(personCity__icontains=normalized_location_string) | Q(personState__icontains=normalized_location_string) |Q(personCountry__icontains=normalized_location_string) | Q(personCity__icontains=hyphenated_location_string) | Q(personState__icontains=hyphenated_location_string) | Q(personCountry__icontains=hyphenated_location_string) | Q(personCity__in=city_labels) | Q(personState__in=city_labels) | Q(personCountry__in=city_labels) | Q(personCity__in=normalized_city_labels) | Q(personState__in=normalized_city_labels) | Q(personCountry__in=normalized_city_labels) | Q(personCity__in=hyphenated_city_labels) | Q(personState__in=hyphenated_city_labels) | Q(personCountry__in=hyphenated_city_labels) | Q(personCity__in=city_codes) | Q(personState__in=city_codes) | Q(personCountry__in=city_codes)
-
-    if allow_null_first_iteration:
-        location_filter_query |= Q(personCity__isnull=True) | Q(personState__isnull=True) | Q(personCountry__isnull=True)
-    
-    records = records.filter(location_filter_query)
-
-    return records
-
-
 def update_country(records, location):
     normalized_location_string = []
     hyphenated_location_string = []
@@ -686,12 +660,12 @@ def update_country(records, location):
     for record in records:
         if not record['person_country']:
             match_query = Q()
-            for loc in location:
-                match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            for loc in normalized_location_string:
-                match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            for loc in hyphenated_location_string:
-                match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
+            # for loc in location:
+            #     match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
+            # for loc in normalized_location_string:
+            #     match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
+            # for loc in hyphenated_location_string:
+            #     match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
             match_query |= (Q(city_code__iexact=record['person_city']) | Q(city_code__iexact=record['person_state']) | Q(label__iexact=record['person_city']) | Q(label__iexact=record['person_state']))
             matching_location = LocationDetails.objects.filter(match_query).first()
             if matching_location:
@@ -702,10 +676,6 @@ def update_country(records, location):
 
 
 def build_whole_word_regex(keywords):
-    # return rf'(?i)\b{keyword}\b'
-    # return rf'\m{keyword}\M'
-    # return rf'(\m{keyword}\M|\b{keyword}\b|[\W_]{keyword}[\W_])'
-    # return rf'(?i)(?<!\w){keyword}(?!\w)'
     if isinstance(keywords, str):
         keywords = [keywords]
     if not keywords:
@@ -751,7 +721,6 @@ def search_profile(request):
     context = {}
     if request.method == 'POST':
         try:
-            start_time = time.time()
             query_dict = json.loads(request.body)
             user = query_dict.get('user_id', None)
             keywords = query_dict.get('keywords', '').lower()
@@ -765,8 +734,6 @@ def search_profile(request):
             company_size_to = query_dict.get('size_to', None)
             contact_name = query_dict.get('contact_name', '')
             job_skill_list = job_titles + skills
-
-            print(query_dict)
 
             if company_size_from in ["", "null"]:
                 company_size_from = None
@@ -796,60 +763,43 @@ def search_profile(request):
 
             is_france = any(loc.lower() == 'france' for loc in location)
             if len(location) > 0 and is_france == False:
-                normalized_location_string = []
-                hyphenated_location_string = []
                 location = [loc.lower() for loc in location]
-                for loc in location:
-                    normalized_location_string.append(loc.replace('-', ' '))
-                    hyphenated_location_string.append(loc.replace(' ', '-'))
+                normalized_location_string = [loc.replace('-', ' ') for loc in location]
+                hyphenated_location_string = [loc.replace(' ', '-') for loc in location]
+                
+                location_variants = location + normalized_location_string + hyphenated_location_string
+                location_variants = list(set(location_variants))
+                
                 match_query = Q()
-                for loc in location:
-                    match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-                for loc in normalized_location_string:
-                    match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-                for loc in hyphenated_location_string:
+                for loc in location_variants:
                     match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
                 matching_locations = LocationDetails.objects.filter(match_query)
-                city_labels = matching_locations.values_list('label', flat=True)
-                city_codes = matching_locations.values_list('city_code', flat=True)
+                city_labels = list(matching_locations.values_list('label', flat=True))
+                # city_codes = matching_locations.values_list('city_code', flat=True)
 
-                normalized_city_labels = []
-                hyphenated_city_labels = []
-                for label in city_labels:
-                    normalized_city_labels.append(label.replace('-', ' ').lower())
-                    hyphenated_city_labels.append(label.replace(' ', '-').lower())
+                city_labels = [loc.lower() for loc in city_labels]
+                normalized_city_labels = [loc.replace('-', ' ') for loc in city_labels]
+                hyphenated_city_labels = [loc.replace(' ', '-') for loc in city_labels]
+                
+                city_label_variants = city_labels + normalized_city_labels + hyphenated_city_labels
+                city_label_variants = list(set(city_label_variants))
 
-                records = records.filter(
-                        Q(personCity__in=location) |
-                        Q(personState__in=location) |
-                        Q(personCountry__in=location) |
-                        Q(personCity__in=normalized_location_string) |
-                        Q(personState__in=normalized_location_string) |
-                        Q(personCountry__in=normalized_location_string) |
-                        Q(personCity__in=hyphenated_location_string) |
-                        Q(personState__in=hyphenated_location_string) |
-                        Q(personCountry__in=hyphenated_location_string) |
-                        Q(personCity__in=city_labels) |
-                        Q(personState__in=city_labels) |
-                        Q(personCountry__in=city_labels) |
-                        Q(personCity__in=normalized_city_labels) |
-                        Q(personState__in=normalized_city_labels) |
-                        Q(personCountry__in=normalized_city_labels) |
-                        Q(personCity__in=hyphenated_city_labels) |
-                        Q(personState__in=hyphenated_city_labels) |
-                        Q(personCountry__in=hyphenated_city_labels) |
-                        Q(personCity__in=city_codes) |
-                        Q(personState__in=city_codes) |
-                        Q(personCountry__in=city_codes)
-                    )
-            print('After location search ', records.count())
+                location_query = Q(
+                    personCity__in=location_variants + city_label_variants
+                ) | Q(
+                    personState__in=location_variants + city_label_variants
+                ) | Q(
+                    personCountry__in=location_variants + city_label_variants
+                )
+
+                records = records.filter(location_query)
+            # print('After location search ', records.count())
 
             # Apply company name filter
             if len(company_names) > 0:
-                company_name_queries = [Q(company_name__icontains=term) for term in company_names]
-                company_name_query = company_name_queries.pop()
-                for q in company_name_queries:
-                    company_name_query |= q
+                company_name_query = Q()
+                for term in company_names:
+                    company_name_query |= Q(company_name__icontains=term)
                 records = records.filter(company_name_query)
             # print('After company name ', records.count())
             
@@ -889,36 +839,12 @@ def search_profile(request):
                             query &= q
                 records = records.filter(query)
             # print('After contact details ', records.count())
-            
+
             # Apply contact name filter
             records = records.filter(Q(full_name__icontains=contact_name) | Q(first_name__icontains=contact_name) | Q(last_name__icontains=contact_name))
             # print('After contact name ', records.count())
 
             keyword_query = build_keyword_query(keywords, keyword_fields)
-            
-            # Create the query for job titles
-            # job_title_query = Q()
-            # if len(job_titles) > 0:
-            #     job_title_queries = [
-            #         Q(full_name__icontains=term) | Q(first_name__icontains=term) |
-            #         Q(last_name__icontains=term) | Q(headline__icontains=term) |
-            #         Q(current_position__icontains=term) | Q(company_name__icontains=term) |
-            #         Q(person_city__icontains=term) | Q(person_state__icontains=term) |
-            #         Q(person_country__icontains=term) | Q(person_industry__icontains=term) |
-            #         Q(tags__icontains=term) | Q(person_skills__icontains=term) |
-            #         Q(education_experience__icontains=term) | Q(company_website__icontains=term) |
-            #         Q(email1__icontains=term) | Q(email2__icontains=term) |
-            #         Q(phone1__icontains=term) | Q(phone2__icontains=term) |
-            #         Q(person_linkedin_url__icontains=term) | Q(company_city__icontains=term) |
-            #         Q(company_state__icontains=term) | Q(company_country__icontains=term) |
-            #         Q(person_angellist_url__icontains=term) | Q(person_crunchbase_url__icontains=term) |
-            #         Q(person_twitter_url__icontains=term) | Q(person_facebook_url__icontains=term) |
-            #         Q(company_linkedin_url__icontains=term)
-            #         for term in job_titles
-            #     ]
-            #     job_title_query = job_title_queries.pop()
-            #     for q in job_title_queries:
-            #         job_title_query |= q
             
             # Create the query for skills
             combined_keyword_query = Q()
@@ -927,9 +853,7 @@ def search_profile(request):
                     Q(full_name__icontains=job_skill) | Q(first_name__icontains=job_skill) |
                     Q(last_name__icontains=job_skill) | Q(headline__icontains=job_skill) |
                     Q(current_position__icontains=job_skill) | Q(company_name__icontains=job_skill) |
-                    Q(person_city__icontains=job_skill) | Q(person_state__icontains=job_skill) |
-                    Q(person_country__icontains=job_skill) | Q(person_industry__icontains=job_skill) |
-                    Q(tags__icontains=job_skill)
+                    Q(person_industry__icontains=job_skill)
                     # Q(person_skills__icontains=job_skill)
                     for job_skill in job_skill_list
                 ]
@@ -937,6 +861,7 @@ def search_profile(request):
                 for q in combined_keyword_queries:
                     combined_keyword_query |= q
             
+            # For priority 4
             key_q = build_keyword_query(keywords, ['headline', 'current_position'])
             j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
             
@@ -956,25 +881,16 @@ def search_profile(request):
                 )
                 # priority_4 = priority_4.filter(key_q & combined_keyword_query).annotate(priority=Value(3, output_field=IntegerField()))
             else:
-                priority_4 = priority_4.annotate(
-                    priority=Case(
-                        When(combined_keyword_query, then=Value(3)),
-                        output_field=IntegerField(),
+                if combined_keyword_query != Q():
+                    priority_4 = priority_4.annotate(
+                        priority=Case(
+                            When(combined_keyword_query, then=Value(3)),
+                            output_field=IntegerField(),
+                        )
                     )
-                )
             # print('Priority 3 ', priority_3.count())
 
-            # For priority 2
-
-            # if len(job_skill_list) == 0:
-            #     if keywords != '':
-            #         priority_2 = priority_4.filter(key_q)
-            #     else:
-            #         priority_2 = records.none()
-            # else:
-            #     job_skills_query = build_keyword_query(job_skill_list, ['headline', 'current_position', 'person_skills'])
-            #     priority_2 = priority_4.filter(job_skills_query)
-            
+            # For priority 2           
             if len(skills) == 0:
                 if keywords != '':
                     priority_4 = priority_4.annotate(
@@ -1030,7 +946,7 @@ def search_profile(request):
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
 
-            # Prepare results
+            # Prepare results            
             page_obj = list(page_obj.object_list.values(*search_fields))
             for item in page_obj:
                 item['show_email1'] = False
@@ -1053,11 +969,7 @@ def search_profile(request):
                     print(e)
             # page_obj = update_country(page_obj_dicts, location)
             page_obj = update_country(page_obj, location)
-            
-            # total_records = len(combined_records)
-            total_records = combined_records.count()
-            optimized_duration = time.time() - start_time
-            print(f"Code Duration: {optimized_duration:.6f} seconds")
+            total_records = paginator.count
 
             context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
             context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
@@ -1374,6 +1286,24 @@ def get_opened_profiles(request):
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
+
+
+@super_admin_required
+def delete_specific_candidates(request, pk):
+    if request.method == 'DELETE':
+        try:
+            try:
+                candidate = CandidateProfiles.objects.get(id=int(pk))
+            except Exception as e:
+                candidate = None
+            if candidate is None:
+                return JsonResponse({'success': False, 'message': 'Profile not found'}, status=404)
+            candidate.delete()
+            return JsonResponse({'success': True, 'message': 'User deleted'}, status=200)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
 # Temporary view to delete all candidates

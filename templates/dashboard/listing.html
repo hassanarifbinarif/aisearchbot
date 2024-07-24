@@ -2,6 +2,7 @@
 {% load static %}
 {% block addcss %}
     <link rel="stylesheet" href="{% static 'aisearchbot/modals/css/attention-required.css' %}" />
+    <link rel="stylesheet" href="{% static 'aisearchbot/modals/css/delete_modal.css' %}" />
 {% endblock addcss %}
 
 {% block title %}
@@ -74,6 +75,8 @@ Listing
 </div>
 
 {% include 'modals/attention-required-modal.html' %}
+
+{% include 'modals/delete-modal.html' %}
 
 {% endblock content %}
 {% block addscript %}

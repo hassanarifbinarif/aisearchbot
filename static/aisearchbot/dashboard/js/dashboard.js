@@ -243,3 +243,57 @@ async function exportData() {
         // link.click();
     })
 }
+
+
+function openDeleteCandidateModal(modalId, id) {
+    let modal = document.querySelector(`#${modalId}`);
+    let form = modal.querySelector("form");
+    form.setAttribute("onsubmit", `delCandidateForm(event, ${id});`);
+    modal.addEventListener('hidden.bs.modal', event => {
+        form.reset();
+        form.removeAttribute("onsubmit");
+        modal.querySelector('.btn-text').innerText = 'Delete';
+        document.querySelector('.delete-error-msg').classList.remove('active');
+        document.querySelector('.delete-error-msg').innerText = "";
+    })
+    document.querySelector(`.${modalId}`).click();
+}
+
+async function delCandidateForm(event, id) {
+    event.preventDefault();
+    let form = event.currentTarget;
+    let formData = new FormData(form);
+    let data = formDataToObject(formData);
+    let button = form.querySelector('button[type="submit"]');
+    let buttonText = button.innerText;
+    let errorMsg = form.querySelector('.delete-error-msg');
+
+    try {
+        errorMsg.innerText = '';
+        errorMsg.classList.remove('active');        
+        let headers = { "X-CSRFToken": data.csrfmiddlewaretoken };
+
+        beforeLoad(button);
+        let response = await requestAPI(`/del-candidate/${id}/`, null, headers, "DELETE");
+        response.json().then(function (res) {
+            if (res.success) {
+                afterLoad(button, 'Deleted');
+                button.disabled = true;
+                getList(urlParams);
+                setTimeout(() => {
+                    button.disabled = false;
+                    afterLoad(button, buttonText);
+                    document.querySelector('.delModal').click();
+                }, 1200)
+            } 
+            else {
+                afterLoad(button, buttonText);
+                errorMsg.innerText = res.message;
+                errorMsg.classList.add('active');
+            }
+        });
+    }
+    catch (err) {
+        console.log(err);
+    }
+}

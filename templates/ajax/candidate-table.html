@@ -6,7 +6,7 @@
         <tr>
             {% for field in field_names %}
             {% if field != 'Id' and field != 'Savedlistprofiles' %}
-                <th scope="col" id='state' onclick="table_sort(event, {{ forloop.counter0 }})" data-col='' >
+                <th scope="col" onclick="table_sort(event, {{ forloop.counter0 }})">
                     <span class='text-light me-1'>{{field|title}}</span>
                     <span>
                         <svg width="20" height="22" viewBox="0 0 20 22" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -17,7 +17,9 @@
                 </th>
             {% endif %}
             {% endfor %}
-
+            <th scope="col">
+                <span class='text-light me-1'>Action</span>
+            </th>
         </tr>
     </thead>
     <tbody>
@@ -68,6 +70,16 @@
             <td><a {% if not item.company_linkedin_url %}class="opacity-point-2" href="#" title="no url found." {% else %} href="{{item.company_linkedin_url}}" target="_blank"{% endif %} >Company Linkedin</a></td>
             <td><a href="{{item.person_image_url}}" target="_blank"><img class="item-img" onerror="this.onerror=null;this.src=`{% static 'aisearchbot/common/images/default-profile.png' %}`;" src="{{item.person_image_url}}" alt="person img"></a></td>
             <td><a href="{{item.company_logo_url}}" target="_blank"><img class="item-img" onerror="this.onerror=null;this.src=`{% static 'aisearchbot/common/images/default-profile.png' %}`;" src="{{item.company_logo_url}}" alt="company logo"></a></td>
+            <td>
+                <div>
+                    <svg onclick="openDeleteCandidateModal('delModal', {{item.id}})" style="width: 30px; height: 30px;" width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect width="40" height="40" rx="4" fill="#FF0000"/>
+                        <path d="M27.8483 17.2876C27.8483 17.2876 27.2665 24.5037 26.929 27.5433C26.7683 28.9951 25.8715 29.8458 24.4026 29.8726C21.6072 29.923 18.8087 29.9262 16.0144 29.8672C14.6012 29.8383 13.7194 28.9769 13.5619 27.5508C13.2222 24.4844 12.6437 17.2876 12.6437 17.2876" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M29.3304 13.8287H11.1611" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M25.8294 13.8285C24.9883 13.8285 24.264 13.2339 24.099 12.41L23.8387 11.1071C23.6779 10.506 23.1337 10.0903 22.5133 10.0903H17.9779C17.3576 10.0903 16.8133 10.506 16.6526 11.1071L16.3922 12.41C16.2272 13.2339 15.5029 13.8285 14.6619 13.8285" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </div>
+            </td>
         </tr>
         {% empty %}
         <tr>

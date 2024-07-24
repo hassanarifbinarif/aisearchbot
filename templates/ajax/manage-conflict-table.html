@@ -72,7 +72,7 @@
             <td title="{{item.original_profile.email2}}">{{item.original_profile.email2 | default:"--"}}</td>
             <td title="{{item.original_profile.phone1}}">{{item.original_profile.phone1 | default:"--"}}</td>
             <td title="{{item.original_profile.phone2}}">{{item.original_profile.phone2 | default:"--"}}</td>
-            <td><a {% if not item.original_profile.original_profile.person_linkedin_url %}class="opacity-point-2" href="#" title="no url found."  {% else %} href="{{item.original_profile.person_linkedin_url}}" target="_blank"{% endif %} >LinkedIn</a></td>
+            <td><a {% if not item.original_profile.person_linkedin_url %}class="opacity-point-2" href="#" title="no url found."  {% else %} href="{{item.original_profile.person_linkedin_url}}" target="_blank"{% endif %} >LinkedIn</a></td>
             <td title="{{item.original_profile.company_size_from}}">{{item.original_profile.company_size_from | default:"--"}}</td>
             <td title="{{item.original_profile.company_size_to}}">{{item.original_profile.company_size_to | default:"--"}}</td>
             <td title="{{item.original_profile.current_position_2}}">{{item.original_profile.current_position_2 | default:"--"}}</td>
