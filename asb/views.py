@@ -717,7 +717,49 @@ def build_regex_pattern(keyword):
 
 
 def build_advanced_keyword_query(keywords, fields, array_fields=None):
+    # def build_query(terms):
+    #     query = Q()
+    #     current_query = Q()
+    #     operator = 'AND'
+    #     negate_next = False
+
+    #     for term in terms:
+    #         if isinstance(term, list):
+    #             term_query = build_query(term)
+    #         elif term.upper() == 'AND':
+    #             operator = 'AND'
+    #             continue
+    #         elif term.upper() == 'OR':
+    #             operator = 'OR'
+    #             continue
+    #         elif term.upper() == 'NOT':
+    #             negate_next = True
+    #             continue
+    #         else:
+    #             term_query = Q()
+    #             regex_pattern = build_regex_pattern(term)
+    #             for field in fields:
+    #                 term_query |= Q(**{f'{field}__regex': regex_pattern})
+            
+    #         if negate_next:
+    #             term_query = ~term_query
+    #             negate_next = False
+            
+    #         if operator == 'AND':
+    #             current_query &= term_query
+    #         else:  # OR
+    #             query |= current_query
+    #             current_query = term_query
+
+    #     query |= current_query  # Add the last term
+    #     return query
+
+    # parsed_keywords = parse_search_query(keywords)
+    # return build_query(parsed_keywords)
+
+
     phrases, terms = parse_search_query(keywords)
+    print(terms)
     query = Q()
     current_query = Q()
     operator = 'AND'
@@ -753,6 +795,8 @@ def build_advanced_keyword_query(keywords, fields, array_fields=None):
         for array_field in array_fields:
             array_query |= Q(**{f'{array_field}__regex': query})
         query |= array_query
+
+    # print(query)
 
     return query
 
@@ -1023,14 +1067,15 @@ def search_profile(request):
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
             # print('Priority 1 ', priority_1.count())
 
-            ab = priority_4.filter(priority=1)
-            print(ab.count())
+            # abc = CandidateProfiles.objects.filter(key_q)
+            # print('what', abc.count())
 
-            # abc = CandidateProfiles.objects.filter(Q(headline__icontains='java') | Q(current_position__icontains='java'))
-            # print(abc.count())
-            # abc = CandidateProfiles.objects.filter(Q(headline__icontains='android') | Q(current_position__icontains='android'))
-            # print(abc.count())
-                
+            # ab = priority_4.filter(priority=1)
+            # print(ab.count())
+
+            # simple_query = Q(headline__icontains='Project manager') | Q(current_position__icontains='Project manager') | Q(headline__icontains='lead') | Q(current_position__icontains='lead') | Q(headline__icontains='java') | Q(current_position__icontains='java')
+            # simple_results = records.filter(simple_query)
+            # print(f"Simple query results count: {simple_results.count()}")
 
             combined_records = priority_4.order_by('priority', '-id')
 
@@ -1110,7 +1155,7 @@ def is_advanced_search(keywords):
 def parse_search_query(query):
     # Find phrases in quotation marks
     quoted_phrases = re.findall(r'"([^"]*)"', query)
-    
+
     # Replace quoted phrases with placeholders
     placeholder = "QUOTED_PHRASE"
     for i, phrase in enumerate(quoted_phrases):
@@ -1126,6 +1171,51 @@ def parse_search_query(query):
     phrases = [term for term in terms if term.upper() not in ['AND', 'OR', 'NOT'] and term not in ['(', ')']]
     
     return phrases, terms
+
+
+# def parse_search_query(query):
+#     # Handle nested parentheses
+#     def parse_parentheses(s):
+#         result = []
+#         current = []
+#         depth = 0
+#         for char in s:
+#             if char == '(':
+#                 if depth > 0:
+#                     current.append(char)
+#                 depth += 1
+#             elif char == ')':
+#                 depth -= 1
+#                 if depth > 0:
+#                     current.append(char)
+#                 elif depth == 0:
+#                     result.append(''.join(current))
+#                     current = []
+#             elif depth > 0:
+#                 current.append(char)
+#             elif char.strip():
+#                 result.append(char.strip())
+#         return result
+
+#     def find_phrases(s):
+#         return re.findall(r'"([^"]*)"', s)
+
+#     parsed = parse_parentheses(query)
+#     result = []
+#     for item in parsed:
+#         if item.startswith('('):
+#             result.append(parse_search_query(item[1:-1]))
+#         else:
+#             phrases = find_phrases(item)
+#             terms = re.findall(r'\b(?:AND|OR|NOT|\S+)\b', re.sub(r'"[^"]*"', '', item), re.IGNORECASE)
+#             for term in terms:
+#                 if term in phrases:
+#                     result.append(term)
+#                 elif term.upper() not in ['AND', 'OR', 'NOT']:
+#                     result.append(term)
+#                 else:
+#                     result.append(term.upper())
+#     return result
 
 
 def validate_query(query):
