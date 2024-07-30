@@ -688,8 +688,77 @@ def build_whole_word_regex(keywords):
     return rf'(?i)({keywords_pattern})'
 
 
-def build_keyword_query(keyword, fields, array_fields=None):
-    regex_pattern = build_whole_word_regex(keyword)
+def build_regex_pattern(keyword):
+    return rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)'
+
+
+# def build_keyword_query(keyword, fields, array_fields=None):
+#     regex_pattern = build_whole_word_regex(keyword)
+#     if not regex_pattern:
+#         return Q()
+    
+#     query = Q()
+#     for field in fields:
+#         query |= Q(**{f'{field}__regex': regex_pattern})
+    
+#     if array_fields:
+#         for array_field in array_fields:
+#             # Annotate the queryset with a subquery to filter the array field elements
+#             subquery = Subquery(
+#                 CandidateProfiles.objects.filter(
+#                         pk=OuterRef('pk'),
+#                         **{f'{array_field}__regex': regex_pattern}
+#                     )
+#                     .values_list('pk', flat=True)[:1]
+#             )
+#             query |= Q(pk__in=subquery)
+
+#     return query
+
+
+def build_advanced_keyword_query(keywords, fields, array_fields=None):
+    phrases, terms = parse_search_query(keywords)
+    query = Q()
+    current_query = Q()
+    operator = 'AND'
+    negate_next = False
+
+    for term in terms:
+        if term.upper() == 'AND':
+            operator = 'AND'
+        elif term.upper() == 'OR':
+            operator = 'OR'
+        elif term.upper() == 'NOT':
+            negate_next = True
+        else:
+            term_query = Q()
+            regex_pattern = build_regex_pattern(term)
+            for field in fields:
+                term_query |= Q(**{f'{field}__regex': regex_pattern})
+            
+            if negate_next:
+                term_query = ~term_query
+                negate_next = False
+            
+            if operator == 'AND':
+                current_query &= term_query
+            else:  # OR
+                query |= current_query
+                current_query = term_query
+
+    query |= current_query  # Add the last term
+
+    if array_fields:
+        array_query = Q()
+        for array_field in array_fields:
+            array_query |= Q(**{f'{array_field}__regex': query})
+        query |= array_query
+
+    return query
+
+
+def build_simple_keyword_query(keywords, fields, array_fields=None):
+    regex_pattern = build_whole_word_regex(keywords)
     if not regex_pattern:
         return Q()
     
@@ -710,6 +779,13 @@ def build_keyword_query(keyword, fields, array_fields=None):
             query |= Q(pk__in=subquery)
 
     return query
+
+
+def build_keyword_query(keywords, fields, array_fields=None, use_advanced=False):
+    if use_advanced:
+        return build_advanced_keyword_query(keywords, fields, array_fields)
+    else:
+        return build_simple_keyword_query(keywords, fields, array_fields)
 
 
 keyword_fields = [
@@ -738,6 +814,14 @@ def search_profile(request):
             company_size_to = query_dict.get('size_to', None)
             contact_name = query_dict.get('contact_name', '')
             job_skill_list = job_titles + skills
+            
+            use_advanced_search = is_advanced_search(keywords)
+            if use_advanced_search:
+                is_valid, error_message = validate_query(keywords)
+                if not is_valid:
+                    context['success'] = False
+                    context['message'] = error_message
+                    return JsonResponse(context, status=400)
 
             if company_size_from in ["", "null"]:
                 company_size_from = None
@@ -824,7 +908,8 @@ def search_profile(request):
                     if size_to is None:
                         company_size_query |= Q(company_size_from__gte=size_from)
                     else:
-                        company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
+                        # company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
+                        company_size_query |= Q(company_size_from__range=(size_from, size_to))
                 valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
                 records = records.filter(company_size_query & valid_data_query)
             # print('After company size ', records.count())
@@ -848,7 +933,7 @@ def search_profile(request):
             records = records.filter(Q(full_name__icontains=contact_name) | Q(first_name__icontains=contact_name) | Q(last_name__icontains=contact_name))
             # print('After contact name ', records.count())
 
-            keyword_query = build_keyword_query(keywords, keyword_fields)
+            keyword_query = build_keyword_query(keywords, keyword_fields, use_advanced=use_advanced_search)
             
             # Create the query for skills
             combined_keyword_query = Q()
@@ -866,7 +951,7 @@ def search_profile(request):
                     combined_keyword_query |= q
             
             # For priority 4
-            key_q = build_keyword_query(keywords, ['headline', 'current_position'])
+            key_q = build_keyword_query(keywords, ['headline', 'current_position'], use_advanced=use_advanced_search)
             j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
             
             if keywords != '':
@@ -938,6 +1023,15 @@ def search_profile(request):
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
             # print('Priority 1 ', priority_1.count())
 
+            ab = priority_4.filter(priority=1)
+            print(ab.count())
+
+            # abc = CandidateProfiles.objects.filter(Q(headline__icontains='java') | Q(current_position__icontains='java'))
+            # print(abc.count())
+            # abc = CandidateProfiles.objects.filter(Q(headline__icontains='android') | Q(current_position__icontains='android'))
+            # print(abc.count())
+                
+
             combined_records = priority_4.order_by('priority', '-id')
 
             # Pagination
@@ -990,6 +1084,65 @@ def search_profile(request):
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
+
+
+import re
+
+
+def is_advanced_search(keywords):
+    # Check for presence of Boolean operators
+    boolean_operators = r'\b(AND|OR|NOT)\b'
+    if re.search(boolean_operators, keywords, re.IGNORECASE):
+        return True
+    
+    # Check for presence of quotation marks (phrase search)
+    if '"' in keywords:
+        return True
+    
+    # Check for presence of parentheses (grouping)
+    if '(' in keywords or ')' in keywords:
+        return True
+    
+    # If none of the above conditions are met, it's a simple search
+    return False
+
+
+def parse_search_query(query):
+    # Find phrases in quotation marks
+    quoted_phrases = re.findall(r'"([^"]*)"', query)
+    
+    # Replace quoted phrases with placeholders
+    placeholder = "QUOTED_PHRASE"
+    for i, phrase in enumerate(quoted_phrases):
+        query = query.replace(f'"{phrase}"', f'{placeholder}{i}', 1)
+    
+    # Find individual terms and operators
+    terms = re.findall(r'\b(?:AND|OR|NOT|\(|\)|\S+)\b', query, re.IGNORECASE)
+    
+    # Replace placeholders with original quoted phrases
+    terms = [term if not term.startswith(placeholder) else quoted_phrases[int(term[len(placeholder):])] for term in terms]
+    
+    # Treat individual words as phrases, excluding operators and parentheses
+    phrases = [term for term in terms if term.upper() not in ['AND', 'OR', 'NOT'] and term not in ['(', ')']]
+    
+    return phrases, terms
+
+
+def validate_query(query):
+    # Check for unmatched parentheses
+    if query.count('(') != query.count(')'):
+        return False, "Unmatched parentheses in the query."
+    
+    # Check for misuse of Boolean operators
+    terms = query.split()
+    for i, term in enumerate(terms):
+        if term.upper() in ['AND', 'OR', 'NOT']:
+            if i == 0 or i == len(terms) - 1:
+                return False, f"Misuse of {term.upper()} operator at the beginning or end of the query."
+            if terms[i-1].upper() in ['AND', 'OR', 'NOT'] or terms[i+1].upper() in ['AND', 'OR', 'NOT']:
+                return False, f"Misuse of {term.upper()} operator: cannot be adjacent to another operator."
+    
+    return True, ""
 
 
 @csrf_exempt
