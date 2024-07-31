@@ -2,6 +2,7 @@ import json
 import os
 import operator
 import time
+import re
 import pandas as pd
 from django.template import loader
 from collections import Counter
@@ -664,12 +665,6 @@ def update_country(records, location):
     for record in records:
         if not record['person_country']:
             match_query = Q()
-            # for loc in location:
-            #     match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            # for loc in normalized_location_string:
-            #     match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
-            # for loc in hyphenated_location_string:
-            #     match_query |= (Q(city_code__iexact=loc) | Q(label__iexact=loc))
             match_query |= (Q(city_code__iexact=record['person_city']) | Q(city_code__iexact=record['person_state']) | Q(label__iexact=record['person_city']) | Q(label__iexact=record['person_state']))
             matching_location = LocationDetails.objects.filter(match_query).first()
             if matching_location:
@@ -689,75 +684,12 @@ def build_whole_word_regex(keywords):
 
 
 def build_regex_pattern(keyword):
+    # print(keyword)
+    # print(rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)')
     return rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)'
 
 
-# def build_keyword_query(keyword, fields, array_fields=None):
-#     regex_pattern = build_whole_word_regex(keyword)
-#     if not regex_pattern:
-#         return Q()
-    
-#     query = Q()
-#     for field in fields:
-#         query |= Q(**{f'{field}__regex': regex_pattern})
-    
-#     if array_fields:
-#         for array_field in array_fields:
-#             # Annotate the queryset with a subquery to filter the array field elements
-#             subquery = Subquery(
-#                 CandidateProfiles.objects.filter(
-#                         pk=OuterRef('pk'),
-#                         **{f'{array_field}__regex': regex_pattern}
-#                     )
-#                     .values_list('pk', flat=True)[:1]
-#             )
-#             query |= Q(pk__in=subquery)
-
-#     return query
-
-
 def build_advanced_keyword_query(keywords, fields, array_fields=None):
-    # def build_query(terms):
-    #     query = Q()
-    #     current_query = Q()
-    #     operator = 'AND'
-    #     negate_next = False
-
-    #     for term in terms:
-    #         if isinstance(term, list):
-    #             term_query = build_query(term)
-    #         elif term.upper() == 'AND':
-    #             operator = 'AND'
-    #             continue
-    #         elif term.upper() == 'OR':
-    #             operator = 'OR'
-    #             continue
-    #         elif term.upper() == 'NOT':
-    #             negate_next = True
-    #             continue
-    #         else:
-    #             term_query = Q()
-    #             regex_pattern = build_regex_pattern(term)
-    #             for field in fields:
-    #                 term_query |= Q(**{f'{field}__regex': regex_pattern})
-            
-    #         if negate_next:
-    #             term_query = ~term_query
-    #             negate_next = False
-            
-    #         if operator == 'AND':
-    #             current_query &= term_query
-    #         else:  # OR
-    #             query |= current_query
-    #             current_query = term_query
-
-    #     query |= current_query  # Add the last term
-    #     return query
-
-    # parsed_keywords = parse_search_query(keywords)
-    # return build_query(parsed_keywords)
-
-
     phrases, terms = parse_search_query(keywords)
     print(terms)
     query = Q()
@@ -795,9 +727,7 @@ def build_advanced_keyword_query(keywords, fields, array_fields=None):
         for array_field in array_fields:
             array_query |= Q(**{f'{array_field}__regex': query})
         query |= array_query
-
     # print(query)
-
     return query
 
 
@@ -883,7 +813,6 @@ def search_profile(request):
                 'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url', 'company_logo_url'
             ]
 
-            # Base queryset
             records = CandidateProfiles.objects.all().order_by('-id')
             records = records.annotate(
                 lower_company_name=Lower('company_name'),
@@ -891,7 +820,6 @@ def search_profile(request):
                 personState=Lower('person_state'),
                 personCountry=Lower('person_country')
             )
-            # print('Initial count ', records.count())
 
             is_france = any(loc.lower() == 'france' for loc in location)
             if len(location) > 0 and is_france == False:
@@ -907,7 +835,6 @@ def search_profile(request):
                     match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
                 matching_locations = LocationDetails.objects.filter(match_query)
                 city_labels = list(matching_locations.values_list('label', flat=True))
-                # city_codes = matching_locations.values_list('city_code', flat=True)
 
                 city_labels = [loc.lower() for loc in city_labels]
                 normalized_city_labels = [loc.replace('-', ' ') for loc in city_labels]
@@ -923,9 +850,7 @@ def search_profile(request):
                 ) | Q(
                     personCountry__in=location_variants + city_label_variants
                 )
-
                 records = records.filter(location_query)
-            # print('After location search ', records.count())
 
             # Apply company name filter
             if len(company_names) > 0:
@@ -933,7 +858,6 @@ def search_profile(request):
                 for term in company_names:
                     company_name_query |= Q(company_name__icontains=term)
                 records = records.filter(company_name_query)
-            # print('After company name ', records.count())
             
             # Apply company size filter
             if len(company_size_ranges) > 0:
@@ -956,7 +880,6 @@ def search_profile(request):
                         company_size_query |= Q(company_size_from__range=(size_from, size_to))
                 valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
                 records = records.filter(company_size_query & valid_data_query)
-            # print('After company size ', records.count())
 
             # Apply contact details filter
             if len(contact_details) > 0:
@@ -971,13 +894,15 @@ def search_profile(request):
                         elif operation == 'and':
                             query &= q
                 records = records.filter(query)
-            # print('After contact details ', records.count())
 
             # Apply contact name filter
             records = records.filter(Q(full_name__icontains=contact_name) | Q(first_name__icontains=contact_name) | Q(last_name__icontains=contact_name))
-            # print('After contact name ', records.count())
 
-            keyword_query = build_keyword_query(keywords, keyword_fields, use_advanced=use_advanced_search)
+            # keyword_query = build_keyword_query(keywords, keyword_fields, use_advanced=use_advanced_search)
+            if use_advanced_search:
+                keyword_query = boolean_search(keywords, keyword_fields)
+            else:
+                keyword_query = build_keyword_query(keywords, keyword_fields)
             
             # Create the query for skills
             combined_keyword_query = Q()
@@ -995,14 +920,18 @@ def search_profile(request):
                     combined_keyword_query |= q
             
             # For priority 4
-            key_q = build_keyword_query(keywords, ['headline', 'current_position'], use_advanced=use_advanced_search)
+            if use_advanced_search:
+                key_q = boolean_search(keywords, ['headline', 'current_position'])
+                print(key_q)
+            else:
+                key_q = build_keyword_query(keywords, ['headline', 'current_position'])
+            # key_q = build_keyword_query(keywords, ['headline', 'current_position'], use_advanced=use_advanced_search)
             j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
             
             if keywords != '':
                 priority_4 = records.filter(keyword_query | j_s_queries).annotate(priority=Value(4, output_field=IntegerField()))
             else:
                 priority_4 = records.filter(j_s_queries).annotate(priority=Value(4, output_field=IntegerField()))
-            # print('Priority 4 ', priority_4.count())
 
             # For priority 3
             if keywords != '':
@@ -1021,7 +950,6 @@ def search_profile(request):
                             output_field=IntegerField(),
                         )
                     )
-            # print('Priority 3 ', priority_3.count())
 
             # For priority 2           
             if len(skills) == 0:
@@ -1032,9 +960,6 @@ def search_profile(request):
                             output_field=IntegerField(),
                         )
                     )
-                    # priority_2 = priority_4.filter(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords))
-                # else:
-                #     priority_2 = records.none()
             else:
                 priority_2_conditions = priority_4.model.objects.case_insensitive_skills_search(skills)
                 priority_4 = priority_4.annotate(
@@ -1044,7 +969,6 @@ def search_profile(request):
                     )
                 )
                 # priority_2 = priority_4.case_insensitive_skills_search(skills)
-            # print('Priority 2 ', priority_2.count())
 
             # For priority 1            
             # Apply job title filter
@@ -1065,17 +989,9 @@ def search_profile(request):
                     )
                 )
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
-            # print('Priority 1 ', priority_1.count())
 
-            # abc = CandidateProfiles.objects.filter(key_q)
-            # print('what', abc.count())
-
-            # ab = priority_4.filter(priority=1)
-            # print(ab.count())
-
-            # simple_query = Q(headline__icontains='Project manager') | Q(current_position__icontains='Project manager') | Q(headline__icontains='lead') | Q(current_position__icontains='lead') | Q(headline__icontains='java') | Q(current_position__icontains='java')
-            # simple_results = records.filter(simple_query)
-            # print(f"Simple query results count: {simple_results.count()}")
+            # abc = priority_4.filter(priority=1)
+            # print(abc.count())
 
             combined_records = priority_4.order_by('priority', '-id')
 
@@ -1131,9 +1047,6 @@ def search_profile(request):
     return JsonResponse(context)
 
 
-import re
-
-
 def is_advanced_search(keywords):
     # Check for presence of Boolean operators
     boolean_operators = r'\b(AND|OR|NOT)\b'
@@ -1173,66 +1086,164 @@ def parse_search_query(query):
     return phrases, terms
 
 
-# def parse_search_query(query):
-#     # Handle nested parentheses
-#     def parse_parentheses(s):
-#         result = []
-#         current = []
-#         depth = 0
-#         for char in s:
-#             if char == '(':
-#                 if depth > 0:
-#                     current.append(char)
-#                 depth += 1
-#             elif char == ')':
-#                 depth -= 1
-#                 if depth > 0:
-#                     current.append(char)
-#                 elif depth == 0:
-#                     result.append(''.join(current))
-#                     current = []
-#             elif depth > 0:
-#                 current.append(char)
-#             elif char.strip():
-#                 result.append(char.strip())
-#         return result
-
-#     def find_phrases(s):
-#         return re.findall(r'"([^"]*)"', s)
-
-#     parsed = parse_parentheses(query)
-#     result = []
-#     for item in parsed:
-#         if item.startswith('('):
-#             result.append(parse_search_query(item[1:-1]))
-#         else:
-#             phrases = find_phrases(item)
-#             terms = re.findall(r'\b(?:AND|OR|NOT|\S+)\b', re.sub(r'"[^"]*"', '', item), re.IGNORECASE)
-#             for term in terms:
-#                 if term in phrases:
-#                     result.append(term)
-#                 elif term.upper() not in ['AND', 'OR', 'NOT']:
-#                     result.append(term)
-#                 else:
-#                     result.append(term.upper())
-#     return result
-
-
 def validate_query(query):
+    # Remove extra spaces
+    query = ' '.join(query.split())
+    
+    # Check for empty query
+    if not query:
+        return False, "Query cannot be empty."
+    
+    # Check for unmatched quotation marks
+    if query.count('"') % 2 != 0:
+        return False, "Quotations must be part of a complete expression and properly closed."
+    
     # Check for unmatched parentheses
     if query.count('(') != query.count(')'):
-        return False, "Unmatched parentheses in the query."
+        return False, "Parentheses must be part of a complete expression and properly closed."
+    
+    # Split the query into terms, preserving quoted phrases and parentheses
+    terms = re.findall(r'[()]|"[^"]*"|\S+', query)
     
     # Check for misuse of Boolean operators
-    terms = query.split()
+    operators = {'AND', 'OR', 'NOT'}
     for i, term in enumerate(terms):
-        if term.upper() in ['AND', 'OR', 'NOT']:
+        upper_term = term.upper()
+        if upper_term in operators:
             if i == 0 or i == len(terms) - 1:
-                return False, f"Misuse of {term.upper()} operator at the beginning or end of the query."
-            if terms[i-1].upper() in ['AND', 'OR', 'NOT'] or terms[i+1].upper() in ['AND', 'OR', 'NOT']:
-                return False, f"Misuse of {term.upper()} operator: cannot be adjacent to another operator."
+                return False, f"Misuse of {upper_term} operator at the beginning or end of the query."
+            if terms[i-1].upper() in operators or terms[i+1].upper() in operators:
+                return False, f"Misuse of {upper_term} operator: cannot be adjacent to another operator."
+    
+    # Check for proper use of parentheses
+    paren_count = 0
+    for term in terms:
+        if term == '(':
+            paren_count += 1
+        elif term == ')':
+            paren_count -= 1
+        if paren_count < 0:
+            return False, "Parentheses must be part of a complete expression and properly closed."
+    
+    # Check for empty groups
+    if '()' in query:
+        return False, "Unsupported syntax in query. Please revise your search terms."
     
     return True, ""
+
+
+# def validate_query(query):
+#     # Check for unmatched parentheses
+#     if query.count('(') != query.count(')'):
+#         return False, "Parentheses must be part of a complete expression and properly closed."
+#         # return False, "Unmatched parentheses in the query."
+    
+#     # Check for misuse of Boolean operators
+#     terms = query.split()
+#     for i, term in enumerate(terms):
+#         if term.upper() in ['AND', 'OR', 'NOT']:
+#             if i == 0 or i == len(terms) - 1:
+#                 return False, f"Misuse of {term.upper()} operator at the beginning or end of the query."
+#             if terms[i-1].upper() in ['AND', 'OR', 'NOT'] or terms[i+1].upper() in ['AND', 'OR', 'NOT']:
+#                 return False, f"Misuse of {term.upper()} operator: cannot be adjacent to another operator."
+    
+#     return True, ""
+
+
+def tokenize(query):
+    """
+    Tokenizes the input query, handling quoted phrases and logical operators.
+    """
+    tokens = []
+    i = 0
+    length = len(query)
+    while i < length:
+        if query[i] in '()"':
+            if query[i] == '"':
+                end_quote = query.find('"', i + 1)
+                if end_quote == -1:
+                    end_quote = length
+                tokens.append(query[i:end_quote + 1])
+                i = end_quote + 1
+            else:
+                tokens.append(query[i])
+                i += 1
+        elif query[i].isspace():
+            i += 1
+        else:
+            end = i
+            while end < length and not query[end].isspace() and query[end] not in '()"':
+                end += 1
+            tokens.append(query[i:end])
+            i = end
+    return tokens
+
+def boolean_search(query, fields):
+    """
+    Parse the boolean search query and construct a Q object for Django ORM.
+    Accepts a list of fields to apply the query on.
+    """
+    # Tokenize the query
+    tokens = tokenize(query)
+    
+    # Initialize an empty Q object
+    q = Q()
+
+    # Stack for grouping
+    stack = []
+    
+    # Current operator context
+    current_op = Q.__and__
+
+    i = 0
+    while i < len(tokens):
+        token = tokens[i]
+
+        if token.upper() == 'AND':
+            current_op = Q.__and__
+        elif token.upper() == 'OR':
+            current_op = Q.__or__
+        elif token.upper() == 'NOT':
+            next_token = tokens[i + 1]
+            i += 1
+            sub_q = Q()
+            if next_token.startswith('"') and next_token.endswith('"'):
+                exact_phrase = next_token.strip('"')
+                for field in fields:
+                    regex_pattern = build_regex_pattern(exact_phrase)
+                    sub_q |= Q(**{f"{field}__regex": regex_pattern})
+            else:
+                for field in fields:
+                    regex_pattern = build_regex_pattern(next_token)
+                    sub_q |= Q(**{f"{field}__regex": regex_pattern})
+            q &= ~sub_q
+        elif token == '(':
+            stack.append((q, current_op))
+            q = Q()
+            current_op = Q.__and__
+        elif token == ')':
+            if stack:
+                prev_q, prev_op = stack.pop()
+                q = prev_op(prev_q, q)
+            current_op = Q.__and__
+        elif token.startswith('"') and token.endswith('"'):
+            exact_phrase = token.strip('"')
+            sub_q = Q()
+            for field in fields:
+                regex_pattern = build_regex_pattern(exact_phrase)
+                sub_q |= Q(**{f"{field}__regex": regex_pattern})
+            q = current_op(q, sub_q)
+        else:
+            if token.upper() not in ['AND', 'OR', 'NOT']:
+                sub_q = Q()
+                for field in fields:
+                    regex_pattern = build_regex_pattern(token)
+                    sub_q |= Q(**{f"{field}__regex": regex_pattern})
+                q = current_op(q, sub_q)
+        
+        i += 1
+
+    return q
 
 
 @csrf_exempt
@@ -1409,22 +1420,6 @@ def get_opened_profiles(request):
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
             
-            # normalized_location_string = search_params.replace('-', ' ')
-            # hyphenated_location_string = search_params.replace(' ', '-')
-            # matching_locations = LocationDetails.objects.filter(
-            #     Q(region_name__icontains=search_params) | Q(region_name__icontains=normalized_location_string) | 
-            #     Q(region_name__icontains=hyphenated_location_string) | Q(department_name__icontains=search_params) |
-            #     Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
-            # )
-            # city_labels = matching_locations.values_list('label', flat=True)
-            # city_codes = matching_locations.values_list('city_code', flat=True)
-
-            # normalized_city_labels = []
-            # hyphenated_city_labels = []
-            # for label in city_labels:
-            #     normalized_city_labels.append(label.replace('-', ' ').lower())
-            #     hyphenated_city_labels.append(label.replace(' ', '-').lower())
-            
             records = records.annotate(personCity=Lower('candidate__person_city'), personState=Lower('candidate__person_state'), personCountry=Lower('candidate__person_country'))
 
             records = records.filter(
@@ -1438,24 +1433,6 @@ def get_opened_profiles(request):
                 Q(personCity__icontains=search_params) |
                 Q(personState__icontains=search_params) |
                 Q(personCountry__icontains=search_params)
-                # Q(personCity__icontains=normalized_location_string) |
-                # Q(personState__icontains=normalized_location_string) |
-                # Q(personCountry__icontains=normalized_location_string) |
-                # Q(personCity__icontains=hyphenated_location_string) |
-                # Q(personState__icontains=hyphenated_location_string) |
-                # Q(personCountry__icontains=hyphenated_location_string) |
-                # Q(personCity__in=city_labels) |
-                # Q(personState__in=city_labels) |
-                # Q(personCountry__in=city_labels) |
-                # Q(personCity__in=normalized_city_labels) |
-                # Q(personState__in=normalized_city_labels) |
-                # Q(personCountry__in=normalized_city_labels) |
-                # Q(personCity__in=hyphenated_city_labels) |
-                # Q(personState__in=hyphenated_city_labels) |
-                # Q(personCountry__in=hyphenated_city_labels) |
-                # Q(personCity__in=city_codes) |
-                # Q(personState__in=city_codes) |
-                # Q(personCountry__in=city_codes)
             )
 
             records_per_page = 20
