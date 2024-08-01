@@ -6,7 +6,7 @@ import re
 import pandas as pd
 from django.template import loader
 from collections import Counter
-from django.db.models import Q, F, Value, IntegerField, Count, When, Case
+from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
@@ -770,6 +770,12 @@ keyword_fields = [
 ]
 
 
+class ArrayLength(Func):
+    function = 'array_length'
+    template = '%(function)s(%(expressions)s, 1)'
+    output_field = IntegerField()
+
+
 @csrf_exempt
 def search_profile(request):
     context = {}
@@ -862,9 +868,9 @@ def search_profile(request):
             # Apply company size filter
             if len(company_size_ranges) > 0:
                 company_size_query = Q()
-                for range in company_size_ranges:
-                    size_from = range.get('from')
-                    size_to = range.get('to')
+                for size_range in company_size_ranges:
+                    size_from = size_range.get('from')
+                    size_to = size_range.get('to')
                     try:
                         size_from = int(size_from)
                     except (ValueError, TypeError):
@@ -922,7 +928,6 @@ def search_profile(request):
             # For priority 4
             if use_advanced_search:
                 key_q = boolean_search(keywords, ['headline', 'current_position'])
-                print(key_q)
             else:
                 key_q = build_keyword_query(keywords, ['headline', 'current_position'])
             # key_q = build_keyword_query(keywords, ['headline', 'current_position'], use_advanced=use_advanced_search)
@@ -989,11 +994,32 @@ def search_profile(request):
                     )
                 )
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
+            
+            keyword_lower = keywords.lower()
+            exact_keyword = build_regex_pattern(keyword_lower)
+            max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
 
-            # abc = priority_4.filter(priority=1)
-            # print(abc.count())
+            conditions = []
+            for i in range(max_length):
+                conditions.append(
+                    When(
+                        **{f'person_skills__{i}__regex': exact_keyword},
+                        then=Value(i + 1)
+                    )
+                )
 
-            combined_records = priority_4.order_by('priority', '-id')
+            priority_4 = priority_4.annotate(
+                skill_index=Case(
+                    *conditions,
+                    default=Value(999999),
+                    output_field=IntegerField()
+                )
+            )
+
+            if keywords != '' and use_advanced_search == False:
+                combined_records = priority_4.order_by('priority', 'skill_index', '-id')
+            else:
+                combined_records = priority_4.order_by('priority', '-id')
 
             # Pagination
             page_number = query_dict.get("page", 1)
@@ -1130,24 +1156,6 @@ def validate_query(query):
         return False, "Unsupported syntax in query. Please revise your search terms."
     
     return True, ""
-
-
-# def validate_query(query):
-#     # Check for unmatched parentheses
-#     if query.count('(') != query.count(')'):
-#         return False, "Parentheses must be part of a complete expression and properly closed."
-#         # return False, "Unmatched parentheses in the query."
-    
-#     # Check for misuse of Boolean operators
-#     terms = query.split()
-#     for i, term in enumerate(terms):
-#         if term.upper() in ['AND', 'OR', 'NOT']:
-#             if i == 0 or i == len(terms) - 1:
-#                 return False, f"Misuse of {term.upper()} operator at the beginning or end of the query."
-#             if terms[i-1].upper() in ['AND', 'OR', 'NOT'] or terms[i+1].upper() in ['AND', 'OR', 'NOT']:
-#                 return False, f"Misuse of {term.upper()} operator: cannot be adjacent to another operator."
-    
-#     return True, ""
 
 
 def tokenize(query):
