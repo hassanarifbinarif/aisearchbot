@@ -1016,8 +1016,22 @@ def search_profile(request):
                     )
                 )
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
+            
+            if keywords == '' and use_advanced_search == False and len(job_titles) > 0:
+                max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
+                skill_conditions = create_skill_conditions(job_titles, max_length)
+
+                priority_4 = priority_4.annotate(
+                    skill_index=Case(
+                        *skill_conditions,
+                        default=Value(999999),
+                        output_field=IntegerField()
+                    )
+                )
 
             if keywords != '' and use_advanced_search == False:
+                combined_records = priority_4.order_by('priority', 'skill_index', '-id')
+            elif keywords == '' and use_advanced_search == False and len(job_titles) > 0:
                 combined_records = priority_4.order_by('priority', 'skill_index', '-id')
             else:
                 combined_records = priority_4.order_by('priority', '-id')
@@ -1072,6 +1086,24 @@ def search_profile(request):
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
+
+
+def create_skill_conditions(keywords, max_length):
+    conditions = []
+    max_length = max_length
+
+    for keyword in keywords:
+        exact_keyword = rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)'
+
+        for i in range(max_length):
+            conditions.append(
+                When(
+                    **{f'person_skills__{i}__regex': exact_keyword},
+                    then=Value((keywords.index(keyword) + 1) * 100 + (i + 1))
+                )
+            )
+    
+    return conditions
 
 
 def is_advanced_search(keywords):
