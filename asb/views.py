@@ -5,8 +5,7 @@ import time
 import re
 import pandas as pd
 from django.template import loader
-from collections import Counter
-from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max, Min
+from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
@@ -24,8 +23,8 @@ from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models.functions import Lower, Length
-from itertools import chain
+from django.db.models.functions import Lower
+from operator import or_
 
 
 # authentication views
@@ -1048,6 +1047,8 @@ def search_profile(request):
             if keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
                 max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
 
+                priority_4 = search_skills(skills, priority_4)
+                # print('here', priority_4)
                 # priority_4 = priority_4.annotate(
                 #     skill_index=Case(
                 #         *skill_conditions,
@@ -1056,9 +1057,9 @@ def search_profile(request):
                 #     )
                 # )
 
-            if keywords != '' and len(job_title) == 0 and use_advanced_search == False:
+            if keywords != '' and len(job_title) == 0 and use_advanced_search == False and len(skills) > 0:
                 combined_records = priority_4.order_by('priority', 'skill_index', '-id')
-            elif keywords == '' and use_advanced_search == False and len(job_titles) > 0:
+            elif keywords == '' and use_advanced_search == False and len(job_titles) > 0 and len(skills) == 0:
                 order_by_fields = ['-match_count']
                 for idx in range(1, len(job_titles) + 1):
                     order_by_fields.append(f'-job_title_{idx}_count')
@@ -1066,7 +1067,7 @@ def search_profile(request):
                 order_by_fields.append('-id')
                 combined_records = priority_4.order_by(*order_by_fields)
             elif keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
-                combined_records = priority_4.order_by('-id')
+                combined_records = priority_4
             else:
                 combined_records = priority_4.order_by('priority', '-id')
 
@@ -1120,6 +1121,45 @@ def search_profile(request):
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
+
+
+class ArrayToString(Func):
+    function = 'ARRAY_TO_STRING'
+    template = "%(function)s(%(expressions)s, ' ')"
+
+
+def search_skills(skills, queryset):
+    max_length = queryset.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
+
+    # Annotate with skills_string
+    queryset = queryset.annotate(skills_string=ArrayToString('person_skills'))
+
+    # Create a Case for each position and skill
+    cases = []
+    for position in range(max_length):
+        for skill_index, skill in enumerate(skills):
+            cases.append(
+                When(
+                    Q(skills_string__regex=build_regex_pattern(skill)) &
+                    Q(person_skills__len__gt=position) &
+                    Q(**{f'person_skills__{position}__iregex': build_regex_pattern(skill)}),
+                    then=Value(position * 1000 + skill_index)
+                )
+            )
+
+    # Annotate with priority
+    queryset = queryset.annotate(
+        priority=Case(*cases, default=Value(1000000), output_field=IntegerField())
+    )
+
+    # Filter to include only profiles with at least one matching skill
+    skill_filter = reduce(or_, [Q(skills_string__regex=build_regex_pattern(skill)) for skill in skills])
+    queryset = queryset.filter(skill_filter)
+
+    # Order by priority
+    queryset = queryset.order_by('priority', '-id')
+
+    return queryset
 
 
 def create_skill_conditions(keywords, max_length):
