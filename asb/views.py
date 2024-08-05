@@ -6,7 +6,7 @@ import re
 import pandas as pd
 from django.template import loader
 from collections import Counter
-from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max
+from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max, Min
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
@@ -24,7 +24,7 @@ from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models.functions import Lower
+from django.db.models.functions import Lower, Length
 from itertools import chain
 
 
@@ -975,7 +975,7 @@ def search_profile(request):
                 )
                 # priority_2 = priority_4.case_insensitive_skills_search(skills)
 
-            if keywords != '' and use_advanced_search == False:
+            if keywords != '' and use_advanced_search == False and len(job_titles) == 0:
                 keyword_lower = keywords.lower()
                 exact_keyword = build_regex_pattern(keyword_lower)
                 max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
@@ -1018,21 +1018,55 @@ def search_profile(request):
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
             
             if keywords == '' and use_advanced_search == False and len(job_titles) > 0:
-                max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
-                skill_conditions = create_skill_conditions(job_titles, max_length)
+                job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
+                priority_4 = priority_4.filter(job_title_queries)
 
-                priority_4 = priority_4.annotate(
-                    skill_index=Case(
-                        *skill_conditions,
-                        default=Value(999999),
+                fields = ['headline', 'current_position']
+
+                query = Q()
+                for field in fields:
+                    for job_title in job_titles:
+                        regex = rf'(?i)(?<!\w){re.escape(job_title)}(?!\w)'
+                        query |= Q(**{f'{field}__regex': regex})
+
+                annotations = {
+                    'match_count': Count(Case(
+                        *[When(Q(**{f'{field}__regex': rf'(?i)(?<!\w){re.escape(job_title)}(?!\w)'}), then=1) 
+                        for field in fields for job_title in job_titles],
                         output_field=IntegerField()
-                    )
-                )
+                    )),
+                }
 
-            if keywords != '' and use_advanced_search == False:
+                for idx, job_title in enumerate(job_titles, start=1):
+                    annotations[f'job_title_{idx}_count'] = Count(Case(
+                        *[When(Q(**{f'{field}__regex': rf'(?i)(?<!\w){re.escape(job_title)}(?!\w)'}), then=1)
+                        for field in fields],
+                        output_field=IntegerField()
+                    ))
+                priority_4 = priority_4.annotate(**annotations)
+            
+            if keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
+                max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
+
+                # priority_4 = priority_4.annotate(
+                #     skill_index=Case(
+                #         *skill_conditions,
+                #         default=Value(999999),
+                #         output_field=IntegerField()
+                #     )
+                # )
+
+            if keywords != '' and len(job_title) == 0 and use_advanced_search == False:
                 combined_records = priority_4.order_by('priority', 'skill_index', '-id')
             elif keywords == '' and use_advanced_search == False and len(job_titles) > 0:
-                combined_records = priority_4.order_by('priority', 'skill_index', '-id')
+                order_by_fields = ['-match_count']
+                for idx in range(1, len(job_titles) + 1):
+                    order_by_fields.append(f'-job_title_{idx}_count')
+
+                order_by_fields.append('-id')
+                combined_records = priority_4.order_by(*order_by_fields)
+            elif keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
+                combined_records = priority_4.order_by('-id')
             else:
                 combined_records = priority_4.order_by('priority', '-id')
 
