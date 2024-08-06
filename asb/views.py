@@ -684,19 +684,19 @@ def build_whole_word_regex(keywords):
         keywords = [keywords]
     if not keywords:
         return None
-    keywords_pattern = '|'.join(rf'(?<!\w){keyword}(?!\w)' for keyword in keywords)
+    # keywords_pattern = '|'.join(rf'(?<!\w){keyword}(?!\w)' for keyword in keywords)
+    keywords_pattern = '|'.join(rf'(?<!\w)(?<![a-zA-Z0-9_]){re.escape(keyword)}(?![a-zA-Z0-9_])(?!\w)' for keyword in keywords)
     return rf'(?i)({keywords_pattern})'
 
 
 def build_regex_pattern(keyword):
-    # print(keyword)
-    # print(rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)')
-    return rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)'
+    # return rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)'
+    escaped_keyword = re.escape(keyword)
+    return rf'(?i)(?<!\w)(?<![a-zA-Z0-9_]){escaped_keyword}(?![a-zA-Z0-9_])(?!\w)'
 
 
 def build_advanced_keyword_query(keywords, fields, array_fields=None):
     phrases, terms = parse_search_query(keywords)
-    print(terms)
     query = Q()
     current_query = Q()
     operator = 'AND'
@@ -981,7 +981,6 @@ def search_profile(request):
                 # priority_2 = priority_4.case_insensitive_skills_search(skills)
 
             if keywords != '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) == 0:
-                print('here')
                 keyword_lower = keywords.lower()
                 exact_keyword = build_regex_pattern(keyword_lower)
                 max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
@@ -1053,16 +1052,7 @@ def search_profile(request):
             
             if keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
                 max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
-
                 priority_4 = search_skills(skills, priority_4)
-                # print('here', priority_4)
-                # priority_4 = priority_4.annotate(
-                #     skill_index=Case(
-                #         *skill_conditions,
-                #         default=Value(999999),
-                #         output_field=IntegerField()
-                #     )
-                # )
 
             
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
@@ -1150,7 +1140,7 @@ def search_skills(skills, queryset):
                 When(
                     Q(skills_string__regex=build_regex_pattern(skill)) &
                     Q(person_skills__len__gt=position) &
-                    Q(**{f'person_skills__{position}__iregex': build_regex_pattern(skill)}),
+                    Q(**{f'person_skills__{position}__regex': build_regex_pattern(skill)}),
                     then=Value(position * 1000 + skill_index)
                 )
             )
