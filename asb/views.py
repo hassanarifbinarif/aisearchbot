@@ -461,14 +461,16 @@ def import_file_data(request):
                     linkedin_url = profile_data['person_linkedin_url']
                     try:
                         original_profile = CandidateProfiles.objects.filter(person_linkedin_url=linkedin_url).first()
-                        if not original_profile:
-                            original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
-                        if not original_profile:
-                            original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
-                        if not original_profile:
-                            original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
-                        if not original_profile:
-                            original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
+                        if email is not None:
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
+                        if email2 is not None:    
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
                         if original_profile:
                             profile_data['original_profile'] = original_profile
                             duplicate_instances.append(profile_data)
