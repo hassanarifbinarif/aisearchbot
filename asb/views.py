@@ -980,7 +980,8 @@ def search_profile(request):
                 )
                 # priority_2 = priority_4.case_insensitive_skills_search(skills)
 
-            if keywords != '' and use_advanced_search == False and len(job_titles) == 0:
+            if keywords != '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) == 0:
+                print('here')
                 keyword_lower = keywords.lower()
                 exact_keyword = build_regex_pattern(keyword_lower)
                 max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
@@ -1063,7 +1064,8 @@ def search_profile(request):
                 #     )
                 # )
 
-            if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) > 0:
+            
+            if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
                 combined_records = priority_4.order_by('priority', 'skill_index', '-id')
             elif keywords == '' and use_advanced_search == False and len(job_titles) > 0 and len(skills) == 0:
                 order_by_fields = ['-match_count']
