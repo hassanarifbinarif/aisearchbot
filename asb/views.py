@@ -1057,7 +1057,7 @@ def search_profile(request):
                 #     )
                 # )
 
-            if keywords != '' and len(job_title) == 0 and use_advanced_search == False and len(skills) > 0:
+            if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) > 0:
                 combined_records = priority_4.order_by('priority', 'skill_index', '-id')
             elif keywords == '' and use_advanced_search == False and len(job_titles) > 0 and len(skills) == 0:
                 order_by_fields = ['-match_count']
