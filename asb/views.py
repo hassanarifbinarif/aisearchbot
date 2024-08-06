@@ -464,6 +464,10 @@ def import_file_data(request):
                         if not original_profile:
                             original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
                         if not original_profile:
+                            original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
+                        if not original_profile:
+                            original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
+                        if not original_profile:
                             original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
                         if original_profile:
                             profile_data['original_profile'] = original_profile
