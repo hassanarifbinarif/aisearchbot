@@ -980,28 +980,6 @@ def search_profile(request):
                 )
                 # priority_2 = priority_4.case_insensitive_skills_search(skills)
 
-            if keywords != '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) == 0:
-                keyword_lower = keywords.lower()
-                exact_keyword = build_regex_pattern(keyword_lower)
-                max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
-
-                conditions = []
-                for i in range(max_length):
-                    conditions.append(
-                        When(
-                            **{f'person_skills__{i}__regex': exact_keyword},
-                            then=Value(i + 1)
-                        )
-                    )
-
-                    priority_4 = priority_4.annotate(
-                        skill_index=Case(
-                            *conditions,
-                            default=Value(999999),
-                            output_field=IntegerField()
-                        )
-                    ).annotate(priority=Value(2, output_field=IntegerField()))
-
             # For priority 1
             # Apply job title filter
             if len(job_titles) == 0:
@@ -1022,7 +1000,29 @@ def search_profile(request):
                 )
                 # priority_1 = priority_4.filter(key_q, job_title_queries)
             
-            if keywords == '' and use_advanced_search == False and len(job_titles) > 0:
+            if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
+                keyword_lower = keywords.lower()
+                exact_keyword = build_regex_pattern(keyword_lower)
+                max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
+
+                conditions = []
+                for i in range(max_length):
+                    conditions.append(
+                        When(
+                            **{f'person_skills__{i}__regex': exact_keyword},
+                            then=Value(i + 1)
+                        )
+                    )
+
+                priority_4 = priority_4.annotate(
+                    skill_index=Case(
+                        *conditions,
+                        default=Value(999999),
+                        output_field=IntegerField()
+                    )
+                ).annotate(priority=Value(2, output_field=IntegerField()))
+            
+            if keywords == '' and use_advanced_search == False and len(job_titles) > 0 and len(skills) == 0:
                 job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
                 priority_4 = priority_4.filter(job_title_queries)
 
