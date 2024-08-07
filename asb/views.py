@@ -18,6 +18,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
+# from asb.priorities import keyword_with_job_title_or_skill
 from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
@@ -980,26 +981,6 @@ def search_profile(request):
                 )
                 # priority_2 = priority_4.case_insensitive_skills_search(skills)
 
-            # For priority 1
-            # Apply job title filter
-            if len(job_titles) == 0:
-                if keywords != '':
-                    priority_4 = priority_4.annotate(
-                        priority=Case(
-                            When(key_q, then=Value(1)),
-                            output_field=IntegerField(),
-                        )
-                    )
-            else:
-                job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
-                priority_4 = priority_4.annotate(
-                    priority=Case(
-                        When(key_q & job_title_queries, then=Value(1)),
-                        output_field=IntegerField(),
-                    )
-                )
-                # priority_1 = priority_4.filter(key_q, job_title_queries)
-            
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
                 keyword_lower = keywords.lower()
                 exact_keyword = build_regex_pattern(keyword_lower)
@@ -1021,6 +1002,37 @@ def search_profile(request):
                         output_field=IntegerField()
                     )
                 ).annotate(priority=Value(2, output_field=IntegerField()))
+
+            # For priority 1
+            if keywords != '':
+                priority_4 = priority_4.annotate(
+                    priority=Case(
+                        When(key_q, then=Value(1)),
+                        output_field=IntegerField(),
+                    )
+                )
+
+            # Apply job title filter
+            # if len(job_titles) == 0:
+            #     if keywords != '':
+            #         priority_4 = priority_4.annotate(
+            #             priority=Case(
+            #                 When(key_q, then=Value(1)),
+            #                 output_field=IntegerField(),
+            #             )
+            #         )
+            # else:
+            #     job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
+            #     priority_4 = priority_4.annotate(
+            #         priority=Case(
+            #             When(key_q & job_title_queries, then=Value(1)),
+            #             output_field=IntegerField(),
+            #         )
+            #     )
+            
+            # if keywords != '' and use_advanced_search == False and (len(job_titles) > 0 or len(skills) > 0):
+            #     priority_4 = keyword_with_job_title_or_skill(priority_4)
+            
             
             if keywords == '' and use_advanced_search == False and len(job_titles) > 0 and len(skills) == 0:
                 job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
