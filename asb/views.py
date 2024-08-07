@@ -461,24 +461,23 @@ def import_file_data(request):
                     email2 = profile_data['email2']
                     linkedin_url = profile_data['person_linkedin_url']
                     try:
-                        # original_profile = CandidateProfiles.objects.filter(person_linkedin_url=linkedin_url).first()
-                        # if email is not None:
-                        #     if not original_profile:
-                        #         original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
-                        #     if not original_profile:
-                        #         original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
-                        # if email2 is not None:    
-                        #     if not original_profile:
-                        #         original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
-                        #     if not original_profile:
-                        #         original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
-                        # if original_profile:
-                        #     profile_data['original_profile'] = original_profile
-                        #     duplicate_instances.append(profile_data)
-                        #     is_duplicate = True
-                        # else:
-                        #     new_instances.append(CandidateProfiles(**profile_data))
-                        new_instances.append(CandidateProfiles(**profile_data))
+                        original_profile = CandidateProfiles.objects.filter(person_linkedin_url=linkedin_url).first()
+                        if email is not None:
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
+                        if email2 is not None:    
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
+                            if not original_profile:
+                                original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
+                        if original_profile:
+                            profile_data['original_profile'] = original_profile
+                            duplicate_instances.append(profile_data)
+                            is_duplicate = True
+                        else:
+                            new_instances.append(CandidateProfiles(**profile_data))
                     except CandidateProfiles.DoesNotExist:
                         new_instances.append(CandidateProfiles(**profile_data))
                 
