@@ -770,9 +770,8 @@ def build_keyword_query(keywords, fields, array_fields=None, use_advanced=False)
 
 keyword_fields = [
     'full_name', 'first_name', 'last_name', 'headline', 'current_position', 
-    'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
-    'tags', 'person_skills', 'education_experience', 'email1', 'email2', 'phone1', 'phone2',
-    'company_city', 'company_state', 'company_country'
+    'company_name', 'person_industry', 'tags', 'person_skills', 'education_experience',
+    'previous_position_2', 'previous_position_3'
 ]
 
 
@@ -937,12 +936,19 @@ def search_profile(request):
             else:
                 key_q = build_keyword_query(keywords, ['headline', 'current_position'])
             # key_q = build_keyword_query(keywords, ['headline', 'current_position'], use_advanced=use_advanced_search)
-            j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
+            # j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
+            j_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
+            s_queries = build_keyword_query(skills, [], ['person_skills'])
             
             if keywords != '':
-                priority_4 = records.filter(keyword_query | j_s_queries).annotate(priority=Value(5, output_field=IntegerField()))
+                priority_4 = records.filter(keyword_query).annotate(priority=Value(5, output_field=IntegerField()))
+            elif len(job_titles) > 0:
+                priority_4 = records.filter(j_queries).annotate(priority=Value(5, output_field=IntegerField()))
+            elif len(skills) > 0:
+                priority_4 = records.filter(s_queries).annotate(priority=Value(5, output_field=IntegerField()))
             else:
-                priority_4 = records.filter(j_s_queries).annotate(priority=Value(5, output_field=IntegerField()))
+                priority_4 = records
+                # priority_4 = records.filter(j_s_queries).annotate(priority=Value(5, output_field=IntegerField()))
 
             # # For priority 3
             # if keywords != '':
@@ -984,7 +990,7 @@ def search_profile(request):
 
             ab = priority_4
 
-            if keywords != '' and use_advanced_search == False and (len(job_titles) > 0 or len(skills) > 0):
+            if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 ab = keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
 
 
@@ -1085,7 +1091,7 @@ def search_profile(request):
                 combined_records = priority_4.order_by(*order_by_fields)
             elif keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
                 combined_records = priority_4
-            elif keywords != '' and use_advanced_search == False and (len(job_titles) > 0 or len(skills) > 0):
+            elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 combined_records = ab
             else:
                 combined_records = priority_4.order_by('priority', '-id')
