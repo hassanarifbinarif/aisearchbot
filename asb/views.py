@@ -18,7 +18,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
-# from asb.priorities import keyword_with_job_title_or_skill
+from asb.priorities import keyword_with_job_title_or_skill
 from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
@@ -944,42 +944,49 @@ def search_profile(request):
             else:
                 priority_4 = records.filter(j_s_queries).annotate(priority=Value(5, output_field=IntegerField()))
 
-            # For priority 3
-            if keywords != '':
-                priority_4 = priority_4.annotate(
-                    priority=Case(
-                        When(key_q & combined_keyword_query, then=Value(4)),
-                        output_field=IntegerField(),
-                    )
-                )
-                # priority_4 = priority_4.filter(key_q & combined_keyword_query).annotate(priority=Value(3, output_field=IntegerField()))
-            else:
-                if combined_keyword_query != Q():
-                    priority_4 = priority_4.annotate(
-                        priority=Case(
-                            When(combined_keyword_query, then=Value(4)),
-                            output_field=IntegerField(),
-                        )
-                    )
+            # # For priority 3
+            # if keywords != '':
+            #     priority_4 = priority_4.annotate(
+            #         priority=Case(
+            #             When(key_q & combined_keyword_query, then=Value(4)),
+            #             output_field=IntegerField(),
+            #         )
+            #     )
+            #     # priority_4 = priority_4.filter(key_q & combined_keyword_query).annotate(priority=Value(3, output_field=IntegerField()))
+            # else:
+            #     if combined_keyword_query != Q():
+            #         priority_4 = priority_4.annotate(
+            #             priority=Case(
+            #                 When(combined_keyword_query, then=Value(4)),
+            #                 output_field=IntegerField(),
+            #             )
+            #         )
 
-            # For priority 2
-            if len(skills) == 0:
-                if keywords != '':
-                    priority_4 = priority_4.annotate(
-                        priority=Case(
-                            When(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords), then=Value(3)),
-                            output_field=IntegerField(),
-                        )
-                    )
-            else:
-                priority_2_conditions = priority_4.model.objects.case_insensitive_skills_search(skills)
-                priority_4 = priority_4.annotate(
-                    priority=Case(
-                        When(priority_2_conditions, then=Value(3)),
-                        output_field=IntegerField(),
-                    )
-                )
-                # priority_2 = priority_4.case_insensitive_skills_search(skills)
+            # # For priority 2
+            # if len(skills) == 0:
+            #     if keywords != '':
+            #         priority_4 = priority_4.annotate(
+            #             priority=Case(
+            #                 When(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords), then=Value(3)),
+            #                 output_field=IntegerField(),
+            #             )
+            #         )
+            # else:
+            #     priority_2_conditions = priority_4.model.objects.case_insensitive_skills_search(skills)
+            #     priority_4 = priority_4.annotate(
+            #         priority=Case(
+            #             When(priority_2_conditions, then=Value(3)),
+            #             output_field=IntegerField(),
+            #         )
+            #     )
+            #     # priority_2 = priority_4.case_insensitive_skills_search(skills)
+
+
+            ab = priority_4
+
+            if keywords != '' and use_advanced_search == False and (len(job_titles) > 0 or len(skills) > 0):
+                ab = keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
+
 
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
                 keyword_lower = keywords.lower()
@@ -1003,14 +1010,14 @@ def search_profile(request):
                     )
                 ).annotate(priority=Value(2, output_field=IntegerField()))
 
-            # For priority 1
-            if keywords != '':
-                priority_4 = priority_4.annotate(
-                    priority=Case(
-                        When(key_q, then=Value(1)),
-                        output_field=IntegerField(),
+                # For priority 1
+                if keywords != '':
+                    priority_4 = priority_4.annotate(
+                        priority=Case(
+                            When(key_q, then=Value(1)),
+                            output_field=IntegerField(),
+                        )
                     )
-                )
 
             # Apply job title filter
             # if len(job_titles) == 0:
@@ -1078,6 +1085,8 @@ def search_profile(request):
                 combined_records = priority_4.order_by(*order_by_fields)
             elif keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
                 combined_records = priority_4
+            elif keywords != '' and use_advanced_search == False and (len(job_titles) > 0 or len(skills) > 0):
+                combined_records = ab
             else:
                 combined_records = priority_4.order_by('priority', '-id')
 
@@ -1177,7 +1186,7 @@ def create_skill_conditions(keywords, max_length):
     max_length = max_length
 
     for keyword in keywords:
-        exact_keyword = rf'(?i)(?<!\w){re.escape(keyword)}(?!\w)'
+        exact_keyword = rf'(?i)(?<!\w)(?<![a-zA-Z0-9_]){re.escape(keyword)}(?![a-zA-Z0-9_])(?!\w)'
 
         for i in range(max_length):
             conditions.append(
@@ -1201,7 +1210,10 @@ def is_advanced_search(keywords):
         return True
     
     # Check for presence of parentheses (grouping)
-    if '(' in keywords or ')' in keywords:
+    # if '(' in keywords or ')' in keywords:
+    #     return True
+
+    if re.search(r'\(\s*[^()]*\b(?:AND|OR|NOT)\b[^()]*\s*\)', keywords, re.IGNORECASE):
         return True
     
     # If none of the above conditions are met, it's a simple search

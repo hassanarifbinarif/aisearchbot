@@ -130,11 +130,11 @@ def keyword_with_job_title_or_skill(queryset, keywords, job_titles, skills):
     # Order profiles by skill priority and id
     filtered_profiles = filtered_profiles.order_by('parent_priority', 'job_title_match', 'skill_priority', '-id')
 
-    what = filtered_profiles.filter(parent_priority=1).count()
-    print(what)
+    # n1 = filtered_profiles.filter(parent_priority=1).count()
+    # print(n1)
 
-    wh = filtered_profiles.filter(parent_priority=2).count()
-    print(wh)
+    # n2 = filtered_profiles.filter(parent_priority=2).count()
+    # print(n2)
     
     # return qs
     return filtered_profiles
