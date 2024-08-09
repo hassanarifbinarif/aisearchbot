@@ -80,9 +80,6 @@ def keyword_with_job_title_or_skill(queryset, keywords, job_titles, skills):
         for pattern in job_title_keyword_patterns:
             secondary_job_title_q |= Q(headline__regex=pattern) | Q(current_position__regex=pattern)
 
-    # Filter profiles based on job title containing "Angular" and all job title keywords
-
-
     filtered_profiles = queryset.annotate(
         job_title_match=Case(
             When((Q(headline__regex=master_keyword_regex) | Q(current_position__regex=master_keyword_regex)) & primary_job_title_q, then=Value(1)),
@@ -119,35 +116,40 @@ def keyword_with_job_title_or_skill(queryset, keywords, job_titles, skills):
         )
     )
 
+    # # Filter profiles based on job title containing "Angular" and all job title keywords
     # filtered_profiles = queryset.filter(
     #     (Q(headline__regex=master_keyword_regex) | Q(current_position__regex=master_keyword_regex)) & job_title_q
     # )
 
-    # Annotate profiles with the position of each skill
-    max_length = filtered_profiles.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
+    if skills:
+        # Annotate profiles with the position of each skill
+        max_length = filtered_profiles.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
 
-    cases = []
-    priority = 1
+        cases = []
+        priority = 1
 
-    for skill in skills:
-        skill_regex = build_regex_pattern(skill)
-        for position in range(max_length):
-            cases.append(
-                When(
-                    Q(**{f'person_skills__{position}__regex': skill_regex}),
-                    then=Value(priority)
+        for skill in skills:
+            skill_regex = build_regex_pattern(skill)
+            for position in range(max_length):
+                cases.append(
+                    When(
+                        Q(**{f'person_skills__{position}__regex': skill_regex}),
+                        then=Value(priority)
+                    )
                 )
-            )
-            priority += 1
+                priority += 1
 
-    # Annotate profiles with skill position priority
-    filtered_profiles = filtered_profiles.annotate(
-        skill_priority=Case(
-            *cases,
-            default=Value(999999),
-            output_field=IntegerField()
+        filtered_profiles = filtered_profiles.annotate(
+            skill_priority=Case(
+                *cases,
+                default=Value(999999),
+                output_field=IntegerField()
+            )
         )
-    )
+    else:
+        filtered_profiles = filtered_profiles.annotate(
+            skill_priority=Value(999999, output_field=IntegerField())
+        )
 
     # Annotate profiles with parent_priority for primary criteria
     filtered_profiles = filtered_profiles.annotate(
