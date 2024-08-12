@@ -935,8 +935,6 @@ def search_profile(request):
                 key_q = boolean_search(keywords, ['headline', 'current_position'])
             else:
                 key_q = build_keyword_query(keywords, ['headline', 'current_position'])
-            # key_q = build_keyword_query(keywords, ['headline', 'current_position'], use_advanced=use_advanced_search)
-            # j_s_queries = build_keyword_query(job_skill_list, ['headline', 'current_position'], ['person_skills'])
             j_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
             s_queries = build_keyword_query(skills, [], ['person_skills'])
             
@@ -947,7 +945,7 @@ def search_profile(request):
             elif len(skills) > 0:
                 priority_4 = records.filter(s_queries).annotate(priority=Value(5, output_field=IntegerField()))
             else:
-                priority_4 = records
+                priority_4 = records.annotate(priority=Value(999999, output_field=IntegerField()))
                 # priority_4 = records.filter(j_s_queries).annotate(priority=Value(5, output_field=IntegerField()))
 
             # # For priority 3
@@ -989,9 +987,13 @@ def search_profile(request):
 
 
             ab = priority_4
+            # bool_search = priority_4
 
             if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 ab = keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
+            
+            # if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == True:
+            #     bool_search = boolean_keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
 
 
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
@@ -1093,6 +1095,8 @@ def search_profile(request):
                 combined_records = priority_4
             elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 combined_records = ab
+            # elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == True:
+            #     combined_records = bool_search
             else:
                 combined_records = priority_4.order_by('priority', '-id')
 
