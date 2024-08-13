@@ -18,7 +18,7 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
-from asb.priorities import keyword_with_job_title_or_skill
+from asb.priorities import boolean_keyword_with_job_title_or_skill, keyword_with_job_title_or_skill
 from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
@@ -987,13 +987,14 @@ def search_profile(request):
 
 
             ab = priority_4
-            # bool_search = priority_4
+            bool_search = priority_4
 
             if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 ab = keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
             
             # if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == True:
-            #     bool_search = boolean_keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
+            if use_advanced_search == True:
+                bool_search = boolean_keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
 
 
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
@@ -1096,7 +1097,8 @@ def search_profile(request):
             elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 combined_records = ab
             # elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == True:
-            #     combined_records = bool_search
+            elif use_advanced_search == True:
+                combined_records = bool_search
             else:
                 combined_records = priority_4.order_by('priority', '-id')
 
