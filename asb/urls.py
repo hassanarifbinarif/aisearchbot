@@ -42,7 +42,7 @@ urlpatterns = [
 
     path('del-candidate/<int:pk>/', views.delete_specific_candidates, name='delete_specific_candidates'),
 
-    path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
+    # path('delete-candidates/', views.delete_all_candidates, name='delete_all_candidates'),
     path('delete-duplicates/', views.delete_all_duplicates, name='delete_all_duplicates'),
 
     path('upload-location-data/', views.location_data_upload, name='location_data_upload'),

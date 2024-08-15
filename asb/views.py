@@ -1681,10 +1681,10 @@ def delete_specific_candidates(request, pk):
 
 # Temporary view to delete all candidates
 
-@super_admin_required
-def delete_all_candidates(request):
-    CandidateProfiles.objects.all().delete()
-    return redirect('/')
+# @super_admin_required
+# def delete_all_candidates(request):
+#     CandidateProfiles.objects.all().delete()
+#     return redirect('/')
 
 
 # Temporary view to delete all duplicates
