@@ -193,7 +193,7 @@ def boolean_keyword_with_job_title_or_skill(queryset, query, job_titles, skills)
 
     keyword_fields = ['headline', 'current_position']
     master_keyword_regex = boolean_search(query, ['job_title'])
-    print(master_keyword_regex)
+    # print(master_keyword_regex)
     job_title_keyword_patterns = [build_regex_pattern(kw) for kw in job_titles]
 
     primary_job_title_q = Q(pk__isnull=False)
@@ -207,19 +207,35 @@ def boolean_keyword_with_job_title_or_skill(queryset, query, job_titles, skills)
         secondary_job_title_q = Q()
         for pattern in job_title_keyword_patterns:
             secondary_job_title_q |= Q(headline__regex=pattern) | Q(current_position__regex=pattern)
+    
 
-    filtered_profiles = queryset.annotate(
-        job_title_match=Case(
-            When((Q(master_keyword_regex)) & primary_job_title_q, then=Value(1)),
-            When((Q(master_keyword_regex)) & secondary_job_title_q, then=Value(2)),
-            When((Q(master_keyword_regex)), then=Value(3)),
-            default=Value(0),
-            output_field=IntegerField()
+    is_two_operator_query = has_only_two_top_level_operators(query)
+    if is_two_operator_query:
+        and_query, or_query = create_and_or_queries(query, ['job_title'])
+        print(and_query)
+        print(or_query)
+        filtered_profiles = queryset.annotate(
+            job_title_match=Case(
+                When((Q(and_query)) & primary_job_title_q, then=Value(1)),
+                When((Q(or_query)) & secondary_job_title_q, then=Value(2)),
+                When((Q(and_query)), then=Value(3)),
+                When((Q(or_query)), then=Value(4)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
         )
-    )
+    else:
+        filtered_profiles = queryset.annotate(
+            job_title_match=Case(
+                When((Q(master_keyword_regex)) & primary_job_title_q, then=Value(1)),
+                When((Q(master_keyword_regex)) & secondary_job_title_q, then=Value(2)),
+                When((Q(master_keyword_regex)), then=Value(3)),
+                default=Value(0),
+                output_field=IntegerField()
+            )
+        )
 
     if skills:
-        # Annotate profiles with the position of each skill
         max_length = filtered_profiles.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
 
         cases = []
@@ -253,20 +269,13 @@ def boolean_keyword_with_job_title_or_skill(queryset, query, job_titles, skills)
             When(job_title_match=1, then=Value(1)),
             When(job_title_match=2, then=Value(2)),
             When(job_title_match=3, then=Value(3)),
+            When(job_title_match=4, then=Value(4)),
             default=Value(999999),
             output_field=IntegerField()
         )
     )
 
-    # abc = queryset.filter((Q(headline__regex=build_regex_pattern('java')) | Q(current_position__regex=build_regex_pattern('java'))) & (Q(headline__regex=build_regex_pattern('android')) | Q(current_position__regex=build_regex_pattern('android'))))
-    # print(abc)
-
-    # abc = queryset.filter(Q(job_title__regex=build_regex_pattern('java')) & Q(job_title__regex=build_regex_pattern('android')))
-    # abc = queryset.filter(Q(master_keyword_regex))
-    # print(abc)
-
     
-    # Order by priority
     filtered_profiles = filtered_profiles.order_by('parent_priority', 'job_title_match', 'skill_priority', '-id')
 
     # n1 = filtered_profiles.filter(parent_priority=1).count()
@@ -277,6 +286,9 @@ def boolean_keyword_with_job_title_or_skill(queryset, query, job_titles, skills)
 
     # n3 = filtered_profiles.filter(parent_priority=3).count()
     # print(n3)
+
+    # n4 = filtered_profiles.filter(parent_priority=4).count()
+    # print(n4)
     
     return filtered_profiles
 
@@ -308,6 +320,7 @@ def tokenize(query):
             tokens.append(query[i:end])
             i = end
     return tokens
+
 
 def boolean_search(query, fields):
     """
@@ -375,3 +388,106 @@ def boolean_search(query, fields):
         i += 1
 
     return q
+
+
+def has_only_two_top_level_operators(query):
+    """
+    Check if the query contains only two operators at the topmost level.
+    Operators include AND, OR, and NOT.
+    Returns True if there are only two operators, False otherwise.
+    """
+    tokens = tokenize(query)
+    top_level_operators = []
+    parentheses_level = 0
+    
+    for token in tokens:
+        if token == '(':
+            parentheses_level += 1
+        elif token == ')':
+            parentheses_level -= 1
+        elif parentheses_level == 0 and token.upper() in ['AND', 'OR', 'NOT']:
+            top_level_operators.append(token.upper())
+
+    return len(top_level_operators) == 2
+
+
+
+def parse_query(query):
+    tokens = re.findall(r'\(|\)|AND|OR|NOT|"[^"]+"|\b\w+\b', query)
+    return tokens
+
+def build_query(terms, operator, fields):
+    query = Q()
+    # print(f"Building query with terms: {terms} and operator: {operator}")
+    for term in terms:
+        sub_query = Q()
+        if isinstance(term, str):
+            for field in fields:
+                sub_query |= Q(**{f"{field}__icontains": term.strip('"')})
+            if operator == 'AND':
+                query &= sub_query
+            elif operator == 'OR':
+                query |= sub_query
+        else:
+            print(f"Unexpected term type: {type(term)}")
+    return query
+
+def create_and_or_queries(query, fields):
+    tokens = parse_query(query)
+    
+    # print(f"Tokens: {tokens}")
+    
+    and_terms = []
+    or_terms = []
+    current_terms = []
+    current_operator = None
+    
+    stack = []
+    
+    for token in tokens:
+        if token.upper() == 'AND':
+            if current_operator == 'OR':
+                or_terms.append(current_terms)
+                current_terms = []
+            current_operator = 'AND'
+        elif token.upper() == 'OR':
+            if current_operator == 'AND':
+                and_terms.append(current_terms)
+                current_terms = []
+            current_operator = 'OR'
+        elif token == '(':
+            stack.append((current_terms, current_operator))
+            current_terms = []
+            current_operator = None
+        elif token == ')':
+            if current_operator == 'AND':
+                and_terms.append(current_terms)
+            elif current_operator == 'OR':
+                or_terms.append(current_terms)
+            current_terms, current_operator = stack.pop()
+            if current_operator == 'AND':
+                current_terms.append(build_query(and_terms, 'AND', fields))
+                and_terms = []
+            elif current_operator == 'OR':
+                current_terms.append(build_query(or_terms, 'OR', fields))
+                or_terms = []
+        else:
+            current_terms.append(token)
+    
+    if current_terms:
+        if current_operator == 'AND':
+            and_terms.append(current_terms)
+        elif current_operator == 'OR':
+            or_terms.append(current_terms)
+    
+    # print(f"and_terms: {and_terms}")
+    # print(f"or_terms: {or_terms}")
+    
+    # Flatten terms before creating the final query
+    and_query = build_query([term for sublist in and_terms for term in (sublist if isinstance(sublist, list) else [sublist])], 'AND', fields) if and_terms else Q()
+    or_query = build_query([term for sublist in or_terms for term in (sublist if isinstance(sublist, list) else [sublist])], 'OR', fields) if or_terms else Q()
+
+    # print(f"and_query: {and_query}")
+    # print(f"or_query: {or_query}")
+    
+    return and_query, or_query
