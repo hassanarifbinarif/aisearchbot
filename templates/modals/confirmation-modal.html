@@ -1,0 +1,29 @@
+{% load static %}
+
+<div class="modal fade" id="confirmationModal" data-bs-backdrop="static" data-bs-keyboard="false" tabindex="-1"
+    aria-labelledby="confirmationModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content text-center">
+            <form>
+                {% csrf_token %}
+                <div class="modal-header border-bottom-0 w-100 justify-content-center">
+                    <span class="add-user-modal-header-text" id="confirmation-modal-header-text">Confirmation Needed</span>
+                </div>
+                <div class="modal-body">
+                    <p id="confirmation-statement">This will delete duplicate records and retain only the most recent one. Are you sure you want to proceed?</p>
+                </div>
+                <div class="error-div">
+                    <small class="confirm-error-msg input-error-msg"></small>
+                </div>
+                <div class="modal-footer border-top-0">
+                    <button type="button" data-bs-dismiss="modal">Cancel</button>
+                    <button class="submit-btn" type="submit">
+                        <span class="spinner-border spinner-border-sm hide" role="status" aria-hidden="true"></span>
+                        <span class="btn-text">Confirm</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+<input type="hidden" class="confirmationModal" data-bs-toggle="modal" data-bs-target="#confirmationModal" />

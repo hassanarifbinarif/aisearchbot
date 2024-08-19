@@ -160,7 +160,13 @@ def dashboard(request):
 @login_required(login_url='super_admin_login')
 def manage_conflicts(request):
     context={}
-    context['active_sidebar'] = 'duplicates'
+    # duplicate_profiles = DuplicateProfiles.objects.all()
+    # for duplicate in duplicate_profiles:
+    #     duplicate.keep_most_recent()
+    # duplicate_profiles = DuplicateProfiles.objects.all()
+    # for duplicate in duplicate_profiles:
+    #     duplicate.save_best_record()
+    context['active_sidebar'] = 'conflicts'
     return render(request, 'dashboard/manage-conflicts.html', context)
 
 
@@ -655,6 +661,20 @@ def resolve_conflict(request):
                 CandidateProfiles.objects.create(**profile_data)
             # return JsonResponse({'success': False, 'message': 'New Password and Confirm Password do not match'}, status=400)
             return JsonResponse({'success': True, 'message': 'Conflict resolved successfully'}, status=200)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@super_admin_required
+def keep_recent_records(request):
+    if request.method == "POST":
+        try:
+            duplicate_profiles = DuplicateProfiles.objects.all().order_by('-id')
+            for duplicate in duplicate_profiles:
+                duplicate.keep_most_recent()            
+            return JsonResponse({'success': True, 'message': 'Conflicts resolved successfully'}, status=200)
         except Exception as e:
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)

@@ -270,7 +270,7 @@ async function delCandidateForm(event, id) {
 
     try {
         errorMsg.innerText = '';
-        errorMsg.classList.remove('active');        
+        errorMsg.classList.remove('active');
         let headers = { "X-CSRFToken": data.csrfmiddlewaretoken };
 
         beforeLoad(button);

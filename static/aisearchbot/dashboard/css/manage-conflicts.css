@@ -87,6 +87,20 @@
 
 }
 
+.keep-recent-btn {
+    width: 230px;
+    height: 45px;
+    border-radius: 10px;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    box-shadow: 0px 0px 10px 0px #1B203240;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: .875rem;
+}
+
 .table-responsive{
     margin-top: 20px;
     padding-top: 5px;
@@ -238,5 +252,20 @@ tbody tr:nth-child(4n+2) {
     }
     tr td{
         font-size: 14px;
+    }
+}
+
+
+@media (max-width: 1532px) {
+    .keep-recent-btn {
+        width: 180px;
+    }
+}
+
+
+@media (max-width: 1280px) {
+    .keep-recent-btn {
+        width: 130px;
+        font-size: .75rem;
     }
 }

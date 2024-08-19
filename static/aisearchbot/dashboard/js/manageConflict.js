@@ -158,3 +158,57 @@ async function resolveConflict(toPreserve, toDelete, type) {
         getList(urlParams);
     })
 }
+
+
+function openConfirmationModal(modalId) {
+    let modal = document.querySelector(`#${modalId}`);
+    let form = modal.querySelector("form");
+    form.setAttribute("onsubmit", `keepRecentConfirmationForm(event);`);
+    modal.querySelector('#confirmation-statement').innerText = 'This will delete duplicate records and retain only the most recent one. Are you sure you want to proceed?';
+    modal.addEventListener('hidden.bs.modal', event => {
+        form.reset();
+        form.removeAttribute("onsubmit");
+        modal.querySelector('.btn-text').innerText = 'Confirm';
+        modal.querySelector('#confirmation-statement').innerText = '';
+        document.querySelector('.confirm-error-msg').classList.remove('active');
+        document.querySelector('.confirm-error-msg').innerText = "";
+    })
+    document.querySelector(`.${modalId}`).click();
+}
+
+
+async function keepRecentConfirmationForm(event) {
+    event.preventDefault();
+    let form = event.currentTarget;
+    let formData = new FormData(form);
+    let button = form.querySelector('button[type="submit"]');
+    let buttonText = button.innerText;
+    let errorMsg = form.querySelector('.confirm-error-msg');
+    try {
+        errorMsg.innerText = '';
+        errorMsg.classList.remove('active');
+        let headers = { "X-CSRFToken": formData.get('csrfmiddlewaretoken') };
+        beforeLoad(button);
+        let response = await requestAPI('/keep-recent-records/', formData, headers, "POST");
+        response.json().then(function(res) {
+            if (res.success) {
+                afterLoad(button, 'Resolved');
+                button.disabled = true;
+                getList(urlParams);
+                setTimeout(() => {
+                    button.disabled = false;
+                    afterLoad(button, buttonText);
+                    document.querySelector('.confirmationModal').click();
+                }, 1200)
+            } 
+            else {
+                afterLoad(button, buttonText);
+                errorMsg.innerText = res.message;
+                errorMsg.classList.add('active');
+            }
+        })
+    }
+    catch (err) {
+        console.log(err);
+    }
+}

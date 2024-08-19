@@ -188,6 +188,14 @@ class DuplicateProfiles(models.Model):
 
     original_profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
 
+    def keep_most_recent(self):
+        try:
+            profile_data = {field.name: getattr(self, field.name) for field in DuplicateProfiles._meta.fields if field.name != 'original_profile' and field.name != 'id'}
+            CandidateProfiles.objects.filter(id=self.original_profile.id).delete()
+            CandidateProfiles.objects.create(**profile_data)
+        except Exception as e:
+            print(e)
+
 
 class ProfileVisibilityToggle(models.Model):
     search_user_id = models.IntegerField()
