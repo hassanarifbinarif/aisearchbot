@@ -32,7 +32,7 @@ urlpatterns = [
     path('get-candidate-data/<str:params>/', views.get_candidate_data, name='get_candidate_data'),
     path('get-duplicate-data/<str:params>/', views.get_duplicate_data, name='get_duplicate_data'),
     path('resolve-conflict/', views.resolve_conflict, name='resolve_conflict'),
-    # path('keep-recent-records/', views.keep_recent_records, name='keep_recent_records'),
+    path('keep-recent-records/', views.keep_recent_records, name='keep_recent_records'),
 
     path('search-matching-profile/', views.search_profile, name='search_matching_profile'),
 
@@ -61,5 +61,5 @@ urlpatterns = [
     path('remove-record-from-list/', views.remove_record_from_list, name='remove_record_from_list'),
     path('remove-candidate-from-list/', views.remove_candidate_from_list, name='remove_candidate_from_list'),
     path('get-list-candidates/<int:pk>', views.get_list_candidates, name='get_list_candidates'),
-    # path('grouped-profiles-view/', views.grouped_profiles_view, name='grouped_profiles_view')
+    # path('grouped-profiles-view/', views.match_profiles_in_batches, name='grouped_profiles_view')
 ]
