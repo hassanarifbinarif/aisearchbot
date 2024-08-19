@@ -207,10 +207,19 @@ class DuplicateProfiles(models.Model):
 
         if duplicate_non_null_count > original_non_null_count:
             # Save the duplicate, delete the original
-            self.save_duplicate()
+            self.merge_and_save()
         elif duplicate_non_null_count < original_non_null_count:
-            # Save the original, delete the duplicate
-            self.delete()
+            for field in ['email1', 'email2', 'phone1', 'phone2']:
+                original_value = getattr(self.original_profile, field)
+                duplicate_value = getattr(self, field)
+                
+                # If duplicate has no value but the original does, copy the value from the original
+                if not duplicate_value and original_value:
+                    setattr(self, field, original_value)
+            
+            self.save_duplicate()
+            # # Save the original, delete the duplicate
+            # self.delete()
         else:
             # Merge data from original to duplicate
             self.merge_and_save()
