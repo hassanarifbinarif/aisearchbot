@@ -164,7 +164,7 @@ function openConfirmationModal(modalId) {
     let modal = document.querySelector(`#${modalId}`);
     let form = modal.querySelector("form");
     form.setAttribute("onsubmit", `keepRecentConfirmationForm(event);`);
-    modal.querySelector('#confirmation-statement').innerText = 'This will delete duplicate records and retain only the most recent one. Are you sure you want to proceed?';
+    modal.querySelector('#confirmation-statement').innerText = 'This button will delete all duplicate records, keeping only those with the most recent information. Additionally, it will merge any essential missing information. Are you sure you want to proceed?';
     modal.addEventListener('hidden.bs.modal', event => {
         form.reset();
         form.removeAttribute("onsubmit");

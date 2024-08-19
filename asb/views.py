@@ -673,7 +673,8 @@ def keep_recent_records(request):
         try:
             duplicate_profiles = DuplicateProfiles.objects.all().order_by('-id')
             for duplicate in duplicate_profiles:
-                duplicate.keep_most_recent()            
+                # duplicate.keep_most_recent()         
+                duplicate.resolve_conflict()   
             return JsonResponse({'success': True, 'message': 'Conflicts resolved successfully'}, status=200)
         except Exception as e:
             print(e)
@@ -2140,3 +2141,35 @@ def remove_candidate_from_list(request):
         return JsonResponse(context, status=405)
 
     return JsonResponse(context)
+
+
+
+# def match_profiles_in_batches(request):
+#     starting = int(request.GET.get('start', 0))
+#     ending = int(request.GET.get('end', 100))
+
+#     profiles = CandidateProfiles.objects.all()[starting-1:ending]
+
+#     for profile in profiles:
+#         print('start', profile)
+#         # Find the first match occurrence in the remaining queryset
+#         duplicate_profile = CandidateProfiles.objects.filter(
+#             person_linkedin_url=profile.person_linkedin_url
+#         ).exclude(id=profile.id).first()
+
+#         if duplicate_profile:
+#             # Append data from the duplicate profile to the original
+#             profile.matched_profile_data = {
+#                 "matched_id": duplicate_profile.id,
+#                 "full_name": duplicate_profile.full_name,
+#                 "email1": duplicate_profile.email1,
+#                 "phone1": duplicate_profile.phone1,
+#                 # Add more fields as necessary
+#             }
+#             profile.save()
+
+#             # You can then delete the duplicate profile if necessary
+#             duplicate_profile.delete()
+#         print('end')
+    
+#     return JsonResponse({'success': True, 'message': 'Conflict resolved successfully', 'matched_profiles': matched_profiles}, status=200)

@@ -196,6 +196,41 @@ class DuplicateProfiles(models.Model):
         except Exception as e:
             print(e)
 
+    
+    def resolve_conflict(self):
+        # Fields to compare
+        fields_to_compare = ['email1', 'email2', 'phone1', 'phone2']
+
+        # Count non-null fields
+        original_non_null_count = sum(1 for field in fields_to_compare if getattr(self.original_profile, field))
+        duplicate_non_null_count = sum(1 for field in fields_to_compare if getattr(self, field))
+
+        if duplicate_non_null_count > original_non_null_count:
+            # Save the duplicate, delete the original
+            self.save_duplicate()
+        elif duplicate_non_null_count < original_non_null_count:
+            # Save the original, delete the duplicate
+            self.delete()
+        else:
+            # Merge data from original to duplicate
+            self.merge_and_save()
+
+    def save_duplicate(self):
+        profile_data = {field.name: getattr(self, field.name) for field in DuplicateProfiles._meta.fields if field.name != 'original_profile' and field.name != 'id'}
+        CandidateProfiles.objects.filter(id=self.original_profile.id).delete()
+        CandidateProfiles.objects.create(**profile_data)
+        # self.save()
+        # # Move the record from DuplicateProfiles to CandidateProfiles
+        # CandidateProfiles.objects.create(**{field.name: getattr(self, field.name) for field in self._meta.fields})
+        # self.original_profile.delete()
+
+    def merge_and_save(self):
+        for field in ['email1', 'email2', 'phone1', 'phone2']:
+            if not getattr(self, field) and getattr(self.original_profile, field):
+                setattr(self, field, getattr(self.original_profile, field))
+
+        self.save_duplicate()
+
 
 class ProfileVisibilityToggle(models.Model):
     search_user_id = models.IntegerField()
