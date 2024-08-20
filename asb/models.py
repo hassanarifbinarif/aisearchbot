@@ -300,7 +300,7 @@ class Actions(models.Model):
     action_user_id = models.IntegerField()
     profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
     comment = models.TextField(null=True, blank=True)
-    action_datetime = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    action_datetime = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
