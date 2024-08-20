@@ -286,6 +286,25 @@ class SavedListProfiles(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class Actions(models.Model):
+    class Types(models.TextChoices):
+        CALL = 'call', _('call')
+        TEXT_MESSAGE = 'text_message', _('text messages')
+        VOICE_EMAIL = 'voice_email', _('voice email')
+        EMAIL = 'email', _('email')
+        NOTE = 'note', _('note')
+        CONVERT = 'convert', _('convert')
+    
+    action_type = models.CharField(max_length=100, choices=Types.choices, null=True)
+    parent_user_id = models.IntegerField()
+    action_user_id = models.IntegerField()
+    profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
+    comment = models.TextField(null=True, blank=True)
+    action_datetime = models.DateTimeField(auto_now_add=True, null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 # Signals
 
 

@@ -62,4 +62,7 @@ urlpatterns = [
     path('remove-candidate-from-list/', views.remove_candidate_from_list, name='remove_candidate_from_list'),
     path('get-list-candidates/<int:pk>', views.get_list_candidates, name='get_list_candidates'),
     # path('grouped-profiles-view/', views.match_profiles_in_batches, name='grouped_profiles_view')
+
+    path('add-actions/', views.add_actions, name='add_actions'),
+    # path('get-actions/', views.get_actions, name='get_actions'),
 ]

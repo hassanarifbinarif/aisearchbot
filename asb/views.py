@@ -19,7 +19,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from asb.priorities import boolean_keyword_with_job_title_or_skill, keyword_with_job_title_or_skill
-from .models import CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
+from .models import Actions, CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
@@ -1133,7 +1133,21 @@ def search_profile(request):
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
 
-            # Prepare results            
+
+            actions = Actions.objects.filter(parent_user_id=user).order_by('-id')
+            actions_mapping = {}
+            for action in actions:
+                if action.profile_id not in actions_mapping:
+                    actions_mapping[action.profile_id] = []
+                actions_mapping[action.profile_id].append({
+                    'action_type': action.action_type,
+                    'parent_user': action.parent_user_id,
+                    'action_user': action.action_user_id,
+                    'comment': action.comment,
+                    'action_datetime': action.action_datetime
+                })
+
+            # Prepare results
             page_obj = list(page_obj.object_list.values(*search_fields))
             for item in page_obj:
                 item['show_email1'] = False
@@ -1143,6 +1157,7 @@ def search_profile(request):
                 item['is_favourite'] = False
                 item['is_opened'] = False
                 item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
+                item['actions'] = actions_mapping.get(item['id'], [])
                 try:
                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
                     item['show_email1'] = profile_visibility.show_email1
@@ -2143,33 +2158,30 @@ def remove_candidate_from_list(request):
     return JsonResponse(context)
 
 
-
-# def match_profiles_in_batches(request):
-#     starting = int(request.GET.get('start', 0))
-#     ending = int(request.GET.get('end', 100))
-
-#     profiles = CandidateProfiles.objects.all()[starting-1:ending]
-
-#     for profile in profiles:
-#         print('start', profile)
-#         # Find the first match occurrence in the remaining queryset
-#         duplicate_profile = CandidateProfiles.objects.filter(
-#             person_linkedin_url=profile.person_linkedin_url
-#         ).exclude(id=profile.id).first()
-
-#         if duplicate_profile:
-#             # Append data from the duplicate profile to the original
-#             profile.matched_profile_data = {
-#                 "matched_id": duplicate_profile.id,
-#                 "full_name": duplicate_profile.full_name,
-#                 "email1": duplicate_profile.email1,
-#                 "phone1": duplicate_profile.phone1,
-#                 # Add more fields as necessary
-#             }
-#             profile.save()
-
-#             # You can then delete the duplicate profile if necessary
-#             duplicate_profile.delete()
-#         print('end')
-    
-#     return JsonResponse({'success': True, 'message': 'Conflict resolved successfully', 'matched_profiles': matched_profiles}, status=200)
+@csrf_exempt
+def add_actions(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            type = data.get('type', None)
+            datetime = data.get('datetime', None)
+            comment = data.get('comment', '')
+            profile_id = data.get('profile', None)
+            parent_id = data.get('parent', None)
+            action_user_id = data.get('action_user', None)
+            
+            if type == None:
+                return JsonResponse({'success': False, 'message': 'Action type is required'}, status=400)
+            if profile_id == None:
+                return JsonResponse({'success': False, 'message': 'Profile ID is required'}, status=400)
+            if parent_id == None:
+                return JsonResponse({'success': False, 'message': 'Parent user is required'}, status=400)
+            if action_user_id == None:
+                return JsonResponse({'success': False, 'message': 'Action user is required'}, status=400)
+            else:
+                Actions.objects.create(action_type=type, parent_user_id=parent_id, action_user_id=action_user_id, profile_id=profile_id, comment=comment, action_datetime=datetime)
+            return JsonResponse({'success': True, 'message': 'Action created'}, status=201)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)

@@ -5,7 +5,7 @@
     <thead class="thead-dark">
         <tr>
             {% for field in field_names %}
-            {% if field != 'Id' and field != 'Savedlistprofiles' %}
+            {% if field != 'Id' and field != 'Savedlistprofiles' and field != 'Actions' %}
                 <th scope="col" onclick="table_sort(event, {{ forloop.counter0 }})">
                     <span class='text-light me-1'>{{field|title}}</span>
                     <span>
