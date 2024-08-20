@@ -1140,7 +1140,7 @@ def search_profile(request):
                 if action.profile_id not in actions_mapping:
                     actions_mapping[action.profile_id] = []
                 actions_mapping[action.profile_id].append({
-                    'action_type': action.action_type,
+                    'action_type': action.get_action_type_display(),
                     'parent_user': action.parent_user_id,
                     'action_user': action.action_user_id,
                     'comment': action.comment,
