@@ -24,6 +24,24 @@ services:
       POSTGRES_DB: "${ASB_DB_NAME}"
       POSTGRES_USER: "${ASB_DB_USER}"
       POSTGRES_PASSWORD: "${ASB_DB_PASSWORD}"
+
+    
+  redis:
+    container_name: "${PROJECT_NAME}_redis_${ENV}"
+    image: redis:alpine
+
+  celery:
+    container_name: "${PROJECT_NAME}_celery_${ENV}"
+    build:
+      context: ./
+      dockerfile: Dockerfile
+    command: celery -A aisearchbot worker --loglevel=info
+    volumes:
+      - "./:/code"
+    depends_on:
+      - aisearchbot-db
+      - aisearchbot-server
+      - redis
   
   # nginx:
   #   container_name: "${PROJECT_NAME}_nginx_${ENV}"
