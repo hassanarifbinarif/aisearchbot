@@ -1141,10 +1141,12 @@ def search_profile(request):
                     actions_mapping[action.profile_id] = []
                 actions_mapping[action.profile_id].append({
                     'action_type': action.get_action_type_display(),
+                    'action_type_value': action.action_type,
                     'parent_user': action.parent_user_id,
                     'action_user': action.action_user_id,
                     'comment': action.comment,
-                    'action_datetime': action.action_datetime
+                    'action_datetime': action.action_datetime,
+                    'id': action.id
                 })
 
             # Prepare results
@@ -2179,9 +2181,74 @@ def add_actions(request):
             if action_user_id == None:
                 return JsonResponse({'success': False, 'message': 'Action user is required'}, status=400)
             else:
-                Actions.objects.create(action_type=type, parent_user_id=parent_id, action_user_id=action_user_id, profile_id=profile_id, comment=comment, action_datetime=datetime)
-            return JsonResponse({'success': True, 'message': 'Action created'}, status=201)
+                new_action = Actions.objects.create(action_type=type, parent_user_id=parent_id, action_user_id=action_user_id, profile_id=profile_id, comment=comment, action_datetime=datetime)
+                new_action_data = {
+                    'action_type': new_action.get_action_type_display(),
+                    'action_type_value': new_action.action_type,
+                    'parent_user': new_action.parent_user_id,
+                    'action_user': new_action.action_user_id,
+                    'comment': new_action.comment,
+                    'action_datetime': new_action.action_datetime,
+                    'id': new_action.id
+                }
+            return JsonResponse({'success': True, 'message': 'Action created', 'actions': new_action_data}, status=201)
         except Exception as e:
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def actions(request, id):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            type = data.get('type', None)
+            datetime = data.get('datetime', None)
+            comment = data.get('comment', '')
+            parent_id = data.get('parent', None)
+            action_user_id = data.get('action_user', None)
+
+            try:
+                action = Actions.objects.get(id=id, parent_user_id=parent_id, action_user_id=action_user_id)
+            except Exception as e:
+                action = None
+            
+            if action == None:
+                return JsonResponse({'success': False, 'message': 'Action not found'}, status=404)
+            if type == None:
+                return JsonResponse({'success': False, 'message': 'Action type is required'}, status=400)
+            else:
+                action.action_type = type
+                action.action_datetime = datetime
+                action.comment = comment
+                action.save(update_fields=['action_type', 'action_datetime', 'comment'])
+                updated_action_data = {
+                    'action_type': action.get_action_type_display(),
+                    'action_type_value': action.action_type,
+                    'parent_user': action.parent_user_id,
+                    'action_user': action.action_user_id,
+                    'comment': action.comment,
+                    'action_datetime': action.action_datetime,
+                    'id': action.id
+                }
+            return JsonResponse({'success': True, 'message': 'Action updated', 'actions': updated_action_data}, status=200)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    
+    if request.method == "DELETE":
+        try:
+            try:
+                action = Actions.objects.get(id=int(id))
+            except Exception as e:
+                action = None
+            if action is None:
+                return JsonResponse({'success': False, 'message': 'Action not found'}, status=404)
+            action.delete()
+            return JsonResponse({'success': True, 'message': 'Action deleted'}, status=204)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+        
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)

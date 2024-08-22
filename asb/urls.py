@@ -64,5 +64,5 @@ urlpatterns = [
     # path('grouped-profiles-view/', views.match_profiles_in_batches, name='grouped_profiles_view')
 
     path('add-actions/', views.add_actions, name='add_actions'),
-    # path('get-actions/', views.get_actions, name='get_actions'),
+    path('actions/<int:id>/', views.actions, name='actions_methods'),
 ]
