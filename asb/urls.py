@@ -65,4 +65,9 @@ urlpatterns = [
 
     path('add-actions/', views.add_actions, name='add_actions'),
     path('actions/<int:id>/', views.actions, name='actions_methods'),
+
+    path('share-profile/', views.share_profile, name='share_profile'),
+    path('get-shared-to-list/', views.get_shared_to_list, name='get_shared_to_list'),
+    path('get-shared-from-list/', views.get_shared_from_list, name='get_shared_from_list'),
+    path('delete-shared-profile/<int:pk>/', views.delete_shared_profile, name='delete_shared_profile'),
 ]

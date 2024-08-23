@@ -305,6 +305,14 @@ class Actions(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+class SharedProfiles(models.Model):
+    shared_from = models.IntegerField()
+    shared_to = models.IntegerField()
+    profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
 # Signals
 
 

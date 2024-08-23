@@ -19,7 +19,7 @@ from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from asb.priorities import boolean_keyword_with_job_title_or_skill, keyword_with_job_title_or_skill
-from .models import Actions, CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, User, OTP, SharedUsers, SavedListProfiles
+from .models import Actions, CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, SharedProfiles, User, OTP, SharedUsers, SavedListProfiles
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
@@ -2251,4 +2251,241 @@ def actions(request, id):
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
         
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def share_profile(request):
+    if request.method == "POST":
+        try:
+            data = json.loads(request.body)
+            profile_id = data.get('profile', None)
+            shared_from = data.get('shared_from', None)
+            shared_to = data.get('shared_to', None)
+            
+            if profile_id == None:
+                return JsonResponse({'success': False, 'message': 'Profile ID is required'}, status=400)
+            if shared_from == None:
+                return JsonResponse({'success': False, 'message': 'Shared from user is required'}, status=400)
+            if shared_to == None:
+                return JsonResponse({'success': False, 'message': 'Shared to user is required'}, status=400)
+            else:
+                shared_profile = SharedProfiles.objects.update_or_create(shared_from=shared_from, shared_to=shared_to, profile_id=profile_id, defaults={})
+            return JsonResponse({'success': True, 'message': 'Profile shared'}, status=200)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def get_shared_to_list(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
+
+            records = SharedProfiles.objects.filter(shared_to=user_id).select_related('profile').order_by('-id')
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
+
+            records_list = []
+            for record in page_obj.object_list:
+                visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate=record.profile, search_user_id=user_id).first()
+                profile_data = {
+                    'id': record.id,
+                    'shared_from': record.shared_from,
+                    'shared_to': record.shared_to,
+                    'created_at': record.created_at,
+                    'updated_at': record.updated_at,
+                    'profile': {
+                        'id': record.profile.id,
+                        'full_name': record.profile.full_name,
+                        'first_name': record.profile.first_name,
+                        'last_name': record.profile.last_name,
+                        'headline': record.profile.headline,
+                        'current_position': record.profile.current_position,
+                        'company_name': record.profile.company_name,
+                        'person_city': record.profile.person_city,
+                        'person_state': record.profile.person_state,
+                        'person_country': record.profile.person_country,
+                        'person_industry': record.profile.person_industry,
+                        'tags': record.profile.tags,
+                        'person_skills': record.profile.person_skills,
+                        'education_experience': record.profile.education_experience,
+                        'company_website': record.profile.company_website,
+                        'email1': record.profile.email1,
+                        'email2': record.profile.email2,
+                        'phone1': record.profile.phone1,
+                        'phone2': record.profile.phone2,
+                        'person_linkedin_url': record.profile.person_linkedin_url,
+                        'company_size_from': record.profile.company_size_from,
+                        'company_size_to': record.profile.company_size_to,
+                        'current_position_2': record.profile.current_position_2,
+                        'current_company_2': record.profile.current_company_2,
+                        'previous_position_2': record.profile.previous_position_2,
+                        'previous_company_2': record.profile.previous_company_2,
+                        'previous_position_3': record.profile.previous_position_3,
+                        'previous_company_3': record.profile.previous_company_3,
+                        'company_city': record.profile.company_city,
+                        'company_state': record.profile.company_state,
+                        'company_country': record.profile.company_country,
+                        'person_angellist_url': record.profile.person_angellist_url,
+                        'person_crunchbase_url': record.profile.person_crunchbase_url,
+                        'person_twitter_url': record.profile.person_twitter_url,
+                        'person_facebook_url': record.profile.person_facebook_url,
+                        'company_linkedin_url': record.profile.company_linkedin_url,
+                        'person_image_url': record.profile.person_image_url,
+                        'company_logo_url': record.profile.company_logo_url,
+                        'show_email1': visibility_toggle.show_email1 if visibility_toggle else False,
+                        'show_email2': visibility_toggle.show_email2 if visibility_toggle else False,
+                        'show_phone1': visibility_toggle.show_phone1 if visibility_toggle else False,
+                        'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
+                        'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
+                        'is_in_list': SavedListProfiles.objects.filter(profile=record.profile).exists(),
+                    }
+                }
+                records_list.append(profile_data)
+            
+            context['records'] = records_list
+            
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = total_records
+            # context['records'] = list(page_obj.object_list.values())
+            return JsonResponse(context, status=200)
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happened!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
+@csrf_exempt
+def get_shared_from_list(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
+
+            records = SharedProfiles.objects.filter(shared_from=user_id).select_related('profile').order_by('-id')
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
+
+            records_list = []
+            for record in page_obj.object_list:
+                visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate=record.profile, search_user_id=user_id).first()
+                profile_data = {
+                    'id': record.id,
+                    'shared_from': record.shared_from,
+                    'shared_to': record.shared_to,
+                    'created_at': record.created_at,
+                    'updated_at': record.updated_at,
+                    'profile': {
+                        'id': record.profile.id,
+                        'full_name': record.profile.full_name,
+                        'first_name': record.profile.first_name,
+                        'last_name': record.profile.last_name,
+                        'headline': record.profile.headline,
+                        'current_position': record.profile.current_position,
+                        'company_name': record.profile.company_name,
+                        'person_city': record.profile.person_city,
+                        'person_state': record.profile.person_state,
+                        'person_country': record.profile.person_country,
+                        'person_industry': record.profile.person_industry,
+                        'tags': record.profile.tags,
+                        'person_skills': record.profile.person_skills,
+                        'education_experience': record.profile.education_experience,
+                        'company_website': record.profile.company_website,
+                        'email1': record.profile.email1,
+                        'email2': record.profile.email2,
+                        'phone1': record.profile.phone1,
+                        'phone2': record.profile.phone2,
+                        'person_linkedin_url': record.profile.person_linkedin_url,
+                        'company_size_from': record.profile.company_size_from,
+                        'company_size_to': record.profile.company_size_to,
+                        'current_position_2': record.profile.current_position_2,
+                        'current_company_2': record.profile.current_company_2,
+                        'previous_position_2': record.profile.previous_position_2,
+                        'previous_company_2': record.profile.previous_company_2,
+                        'previous_position_3': record.profile.previous_position_3,
+                        'previous_company_3': record.profile.previous_company_3,
+                        'company_city': record.profile.company_city,
+                        'company_state': record.profile.company_state,
+                        'company_country': record.profile.company_country,
+                        'person_angellist_url': record.profile.person_angellist_url,
+                        'person_crunchbase_url': record.profile.person_crunchbase_url,
+                        'person_twitter_url': record.profile.person_twitter_url,
+                        'person_facebook_url': record.profile.person_facebook_url,
+                        'company_linkedin_url': record.profile.company_linkedin_url,
+                        'person_image_url': record.profile.person_image_url,
+                        'company_logo_url': record.profile.company_logo_url,
+                        'show_email1': visibility_toggle.show_email1 if visibility_toggle else False,
+                        'show_email2': visibility_toggle.show_email2 if visibility_toggle else False,
+                        'show_phone1': visibility_toggle.show_phone1 if visibility_toggle else False,
+                        'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
+                        'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
+                        'is_in_list': SavedListProfiles.objects.filter(profile=record.profile).exists(),
+                    }
+                }
+                records_list.append(profile_data)
+            
+            context['records'] = records_list
+            
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = total_records
+            # context['records'] = list(page_obj.object_list.values())
+            return JsonResponse(context, status=200)
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happened!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
+
+
+@csrf_exempt
+def delete_shared_profile(request, pk):
+    context = {}
+    if request.method == "DELETE":
+        try:
+            profile_instance = SharedProfiles.objects.filter(id=pk)
+            if profile_instance.exists():
+                profile_instance.delete()
+                context['success'] = True
+                context['message'] = "Shared profile deleted."
+                context['status'] = 204
+                return JsonResponse({'success': True, 'message': 'Shared profile deleted'}, status=204)
+            else:
+                return JsonResponse({'success': False, 'message': 'Shared profile not found'}, status=404)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+    
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
