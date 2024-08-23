@@ -2286,7 +2286,7 @@ def get_shared_to_list(request):
             query_dict = json.loads(request.body)
             user_id = query_dict.get('user_id')
 
-            records = SharedProfiles.objects.filter(shared_to=user_id).select_related('profile').order_by('-id')
+            records = SharedProfiles.objects.filter(shared_to=user_id, deleted_by_shared_to=False).select_related('profile').order_by('-id')
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
 
@@ -2382,7 +2382,7 @@ def get_shared_from_list(request):
             query_dict = json.loads(request.body)
             user_id = query_dict.get('user_id')
 
-            records = SharedProfiles.objects.filter(shared_from=user_id).select_related('profile').order_by('-id')
+            records = SharedProfiles.objects.filter(shared_from=user_id, deleted_by_shared_from=False).select_related('profile').order_by('-id')
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
 
@@ -2472,20 +2472,92 @@ def get_shared_from_list(request):
 
 @csrf_exempt
 def delete_shared_profile(request, pk):
-    context = {}
-    if request.method == "DELETE":
+    if request.method == "POST":
         try:
-            profile_instance = SharedProfiles.objects.filter(id=pk)
-            if profile_instance.exists():
-                profile_instance.delete()
-                context['success'] = True
-                context['message'] = "Shared profile deleted."
-                context['status'] = 204
-                return JsonResponse({'success': True, 'message': 'Shared profile deleted'}, status=204)
-            else:
+            query_dict = json.loads(request.body)
+            shared_to = query_dict.get('shared_to', None)
+            shared_from = query_dict.get('shared_from', None)
+            current_user = query_dict.get('current_user', None)
+            try:
+                profile_instance = SharedProfiles.objects.get(id=pk, shared_to=shared_to, shared_from=shared_from)
+            except Exception as e:
+                print(e)
+                profile_instance = None
+            
+            if profile_instance == None:
                 return JsonResponse({'success': False, 'message': 'Shared profile not found'}, status=404)
+            elif profile_instance.deleted_by_shared_from == True or profile_instance.deleted_by_shared_from == True:
+                profile_instance.delete()
+            elif shared_to == current_user:
+                profile_instance.deleted_by_shared_to = True
+                profile_instance.save(update_fields=['deleted_by_shared_to'])
+            elif shared_from == current_user:
+                profile_instance.deleted_by_shared_from = True
+                profile_instance.save(update_fields=['deleted_by_shared_from'])
+            return JsonResponse({'success': True, 'message': 'Shared profile deleted'}, status=204)
         except Exception as e:
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
     
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def get_profile(request, pk):
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            user_id = query_dict.get('user_id')
+            record = CandidateProfiles.objects.get(id=pk)
+            visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate=record, search_user_id=user_id).first()
+            profile = {
+                'id': record.id,
+                'full_name': record.full_name,
+                'first_name': record.first_name,
+                'last_name': record.last_name,
+                'headline': record.headline,
+                'current_position': record.current_position,
+                'company_name': record.company_name,
+                'person_city': record.person_city,
+                'person_state': record.person_state,
+                'person_country': record.person_country,
+                'person_industry': record.person_industry,
+                'tags': record.tags,
+                'person_skills': record.person_skills,
+                'education_experience': record.education_experience,
+                'company_website': record.company_website,
+                'email1': record.email1,
+                'email2': record.email2,
+                'phone1': record.phone1,
+                'phone2': record.phone2,
+                'person_linkedin_url': record.person_linkedin_url,
+                'company_size_from': record.company_size_from,
+                'company_size_to': record.company_size_to,
+                'current_position_2': record.current_position_2,
+                'current_company_2': record.current_company_2,
+                'previous_position_2': record.previous_position_2,
+                'previous_company_2': record.previous_company_2,
+                'previous_position_3': record.previous_position_3,
+                'previous_company_3': record.previous_company_3,
+                'company_city': record.company_city,
+                'company_state': record.company_state,
+                'company_country': record.company_country,
+                'person_angellist_url': record.person_angellist_url,
+                'person_crunchbase_url': record.person_crunchbase_url,
+                'person_twitter_url': record.person_twitter_url,
+                'person_facebook_url': record.person_facebook_url,
+                'company_linkedin_url': record.company_linkedin_url,
+                'person_image_url': record.person_image_url,
+                'company_logo_url': record.company_logo_url,
+                'show_email1': visibility_toggle.show_email1 if visibility_toggle else False,
+                'show_email2': visibility_toggle.show_email2 if visibility_toggle else False,
+                'show_phone1': visibility_toggle.show_phone1 if visibility_toggle else False,
+                'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
+                'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
+                'is_in_list': SavedListProfiles.objects.filter(profile=record).exists(),
+            }
+            return JsonResponse({'success': True, 'message': 'Profile retrieved', 'profile': profile}, status=200)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': 'Profile not found'}, status=404)
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)

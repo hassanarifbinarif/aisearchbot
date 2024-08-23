@@ -309,6 +309,8 @@ class SharedProfiles(models.Model):
     shared_from = models.IntegerField()
     shared_to = models.IntegerField()
     profile = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
+    deleted_by_shared_from = models.BooleanField(default=False)
+    deleted_by_shared_to = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
