@@ -159,6 +159,8 @@ td a{
     height: 30px;
     border-radius: 50%;
     background: #D9D9D9;
+    object-fit: cover;
+    object-position: center;
 }
 .skills-row {
     overflow: unset;

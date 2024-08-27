@@ -1475,7 +1475,6 @@ def get_favourite_profiles(request):
                 Q(department_name__icontains=normalized_location_string) | Q(department_name__icontains=hyphenated_location_string)
             )
             city_labels = matching_locations.values_list('label', flat=True)
-            city_codes = matching_locations.values_list('city_code', flat=True)
 
             normalized_city_labels = []
             hyphenated_city_labels = []
@@ -1495,25 +1494,7 @@ def get_favourite_profiles(request):
                 Q(candidate__person_skills__icontains=search_params) |
                 Q(personCity__icontains=search_params) |
                 Q(personState__icontains=search_params) |
-                Q(personCountry__icontains=search_params) |
-                Q(personCity__icontains=normalized_location_string) |
-                Q(personState__icontains=normalized_location_string) |
-                Q(personCountry__icontains=normalized_location_string) |
-                Q(personCity__icontains=hyphenated_location_string) |
-                Q(personState__icontains=hyphenated_location_string) |
-                Q(personCountry__icontains=hyphenated_location_string) |
-                Q(personCity__in=city_labels) |
-                Q(personState__in=city_labels) |
-                Q(personCountry__in=city_labels) |
-                Q(personCity__in=normalized_city_labels) |
-                Q(personState__in=normalized_city_labels) |
-                Q(personCountry__in=normalized_city_labels) |
-                Q(personCity__in=hyphenated_city_labels) |
-                Q(personState__in=hyphenated_city_labels) |
-                Q(personCountry__in=hyphenated_city_labels) |
-                Q(personCity__in=city_codes) |
-                Q(personState__in=city_codes) |
-                Q(personCountry__in=city_codes)
+                Q(personCountry__icontains=search_params)
             )
 
             records_per_page = 20
@@ -2285,10 +2266,36 @@ def get_shared_to_list(request):
         try:
             query_dict = json.loads(request.body)
             user_id = query_dict.get('user_id')
-
-            records = SharedProfiles.objects.filter(shared_to=user_id, deleted_by_shared_to=False).select_related('profile').order_by('-id')
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
+
+            filter_dict = query_dict.get('filter_data')
+            share_user_ids = filter_dict.get('shared_users', [])
+            start_date = filter_dict.get('start_date', None)
+            end_date = filter_dict.get('end_date', None)
+            city = filter_dict.get('city', '')
+            state = filter_dict.get('state', '')
+            region = filter_dict.get('region', '')
+            country = filter_dict.get('country', '')
+
+            records = SharedProfiles.objects.filter(shared_to=user_id, deleted_by_shared_to=False).select_related('profile').order_by('-id')
+            
+            if search_params:
+                records = records.filter(Q(profile__first_name__icontains=search_params) | Q(profile__last_name__icontains=search_params) | Q(profile__current_position__icontains=search_params) | Q(profile__company_name__icontains=search_params))
+
+            if len(share_user_ids) > 0:
+                records = records.filter(shared_from__in=share_user_ids)
+            if start_date:
+                records = records.filter(created_at__gte=start_date)
+            if end_date:
+                records = records.filter(created_at__lte=end_date)
+            
+            if city:
+                records = records.filter(Q(profile__person_city__icontains=city))
+            if region:
+                records = records.filter(Q(profile__person_state__icontains=region))
+            # if country:
+            #     records = records.filter(Q(profile__person_country__icontains=country))
 
             records_per_page = 20
             paginator = Paginator(records, records_per_page)
@@ -2381,10 +2388,38 @@ def get_shared_from_list(request):
         try:
             query_dict = json.loads(request.body)
             user_id = query_dict.get('user_id')
-
-            records = SharedProfiles.objects.filter(shared_from=user_id, deleted_by_shared_from=False).select_related('profile').order_by('-id')
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')
+
+            filter_dict = query_dict.get('filter_data')
+            share_user_ids = filter_dict.get('shared_users', [])
+            start_date = filter_dict.get('start_date', None)
+            end_date = filter_dict.get('end_date', None)
+            city = filter_dict.get('city', '')
+            state = filter_dict.get('state', '')
+            region = filter_dict.get('region', '')
+            country = filter_dict.get('country', '')
+
+            records = SharedProfiles.objects.filter(shared_from=user_id, deleted_by_shared_from=False).select_related('profile').order_by('-id')
+            
+            if search_params:
+                records = records.filter(Q(profile__first_name__icontains=search_params) | Q(profile__last_name__icontains=search_params) | Q(profile__current_position__icontains=search_params) | Q(profile__company_name__icontains=search_params))
+
+            if len(share_user_ids) > 0:
+                records = records.filter(shared_to__in=share_user_ids)
+            if start_date:
+                records = records.filter(created_at__gte=start_date)
+            if end_date:
+                records = records.filter(created_at__lte=end_date)
+            
+            if city:
+                print('here')
+                records = records.filter(Q(profile__person_city__icontains=city))
+            if region:
+                print('there')
+                records = records.filter(Q(profile__person_state__icontains=region))
+            # if country:
+            #     records = records.filter(Q(profile__person_country__icontains=country))
 
             records_per_page = 20
             paginator = Paginator(records, records_per_page)
