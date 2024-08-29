@@ -1504,6 +1504,22 @@ def get_favourite_profiles(request):
             context['total_pages'] = paginator.num_pages
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
+
+            actions = Actions.objects.filter(parent_user_id=user_id).order_by('-id')
+            actions_mapping = {}
+            for action in actions:
+                if action.profile_id not in actions_mapping:
+                    actions_mapping[action.profile_id] = []
+                actions_mapping[action.profile_id].append({
+                    'action_type': action.get_action_type_display(),
+                    'action_type_value': action.action_type,
+                    'parent_user': action.parent_user_id,
+                    'action_user': action.action_user_id,
+                    'comment': action.comment,
+                    'action_datetime': action.action_datetime,
+                    'id': action.id
+                })
 
             page_obj_list = []
             for item in page_obj.object_list:
@@ -1547,6 +1563,7 @@ def get_favourite_profiles(request):
                     'person_image_url': item.candidate.person_image_url,
                     'company_logo_url': item.candidate.company_logo_url
                 }
+                candidate_dict['actions'] = actions_mapping.get(item.candidate.id, [])
                 candidate_dict['show_email1'] = item.show_email1
                 candidate_dict['show_email2'] = item.show_email2
                 candidate_dict['show_phone1'] = item.show_phone1
@@ -1558,10 +1575,10 @@ def get_favourite_profiles(request):
                         candidate_dict['is_opened'] = True
                 page_obj_list.append(candidate_dict)
             
-            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
-            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
-            context['records_count'] = records.count()
+            context['records_count'] = total_records
             context['records'] = page_obj_list
             return JsonResponse(context, status=200)
             
@@ -1610,6 +1627,22 @@ def get_opened_profiles(request):
             context['total_pages'] = paginator.num_pages
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
+
+            actions = Actions.objects.filter(parent_user_id=user_id).order_by('-id')
+            actions_mapping = {}
+            for action in actions:
+                if action.profile_id not in actions_mapping:
+                    actions_mapping[action.profile_id] = []
+                actions_mapping[action.profile_id].append({
+                    'action_type': action.get_action_type_display(),
+                    'action_type_value': action.action_type,
+                    'parent_user': action.parent_user_id,
+                    'action_user': action.action_user_id,
+                    'comment': action.comment,
+                    'action_datetime': action.action_datetime,
+                    'id': action.id
+                })
 
             page_obj_list = []
             for item in page_obj.object_list:
@@ -1653,6 +1686,7 @@ def get_opened_profiles(request):
                     'person_image_url': item.candidate.person_image_url,
                     'company_logo_url': item.candidate.company_logo_url
                 }
+                candidate_dict['actions'] = actions_mapping.get(item.candidate.id, [])
                 candidate_dict['show_email1'] = item.show_email1
                 candidate_dict['show_email2'] = item.show_email2
                 candidate_dict['show_phone1'] = item.show_phone1
@@ -1663,10 +1697,10 @@ def get_opened_profiles(request):
                         candidate_dict['is_opened'] = True
                 page_obj_list.append(candidate_dict)
             
-            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
-            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
-            context['records_count'] = records.count()
+            context['records_count'] = total_records
             context['records'] = page_obj_list
             return JsonResponse(context, status=200)
             
@@ -1962,19 +1996,17 @@ def get_list_candidates(request, pk):
             query_dict = json.loads(request.body)
             user_id = query_dict.get('user_id')
 
-            # Fetch saved profiles for the given list
             saved_profiles = SavedListProfiles.objects.filter(list=pk).order_by("-created_at")
             profile_ids = saved_profiles.values_list('profile_id', flat=True)
             records = CandidateProfiles.objects.filter(id__in=profile_ids)
             context['list_id'] = pk
             context['list_name'] = SavedLists.objects.get(pk=pk).name
 
-            # Pagination
             page_number = query_dict.get("page", 1)
             search_params = query_dict.get("q", '')   
             
             search_query =  Q(full_name__icontains=search_params) | Q(email1__icontains=search_params) | Q(email2__icontains=search_params) | Q(company_name__icontains=search_params) | Q(headline__icontains=search_params) | Q(current_position__icontains=search_params) | Q(person_skills__icontains=search_params) | Q(person_city__icontains=search_params) | Q(person_state__icontains=search_params) | Q(person_country__icontains=search_params) 
-            records = records.filter(search_query)  # Apply search query to the filtered records
+            records = records.filter(search_query)
             
             records_per_page = 20
             paginator = Paginator(records, records_per_page)
@@ -1983,11 +2015,27 @@ def get_list_candidates(request, pk):
             context['total_pages'] = paginator.num_pages
             context['has_next'] = page_obj.has_next()
             context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
 
-            context['start_record'] = 0 if records.count() == 0 else (page_number - 1) * records_per_page + 1
-            context['end_record'] = 0 if records.count() == 0 else context['start_record'] + len(page_obj) - 1
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
-            context['records_count'] = records.count()
+            context['records_count'] = total_records
+
+            actions = Actions.objects.filter(parent_user_id=user_id).order_by('-id')
+            actions_mapping = {}
+            for action in actions:
+                if action.profile_id not in actions_mapping:
+                    actions_mapping[action.profile_id] = []
+                actions_mapping[action.profile_id].append({
+                    'action_type': action.get_action_type_display(),
+                    'action_type_value': action.action_type,
+                    'parent_user': action.parent_user_id,
+                    'action_user': action.action_user_id,
+                    'comment': action.comment,
+                    'action_datetime': action.action_datetime,
+                    'id': action.id
+                })
 
             # Construct the list of records with additional info
             records_list = []
@@ -2040,6 +2088,8 @@ def get_list_candidates(request, pk):
                     'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
                     'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
                     'is_in_list': SavedListProfiles.objects.filter(profile=record).exists(),
+                    'actions': actions_mapping.get(record.id, []),
+                    'is_saved': CandidateProfiles.is_saved_for_user(record.id, user_id)
                 }
                 records_list.append(candidate_dict)
 
@@ -2543,6 +2593,22 @@ def get_profile(request, pk):
             user_id = query_dict.get('user_id')
             record = CandidateProfiles.objects.get(id=pk)
             visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate=record, search_user_id=user_id).first()
+            
+            actions = Actions.objects.filter(parent_user_id=user_id).order_by('-id')
+            actions_mapping = {}
+            for action in actions:
+                if action.profile_id not in actions_mapping:
+                    actions_mapping[action.profile_id] = []
+                actions_mapping[action.profile_id].append({
+                    'action_type': action.get_action_type_display(),
+                    'action_type_value': action.action_type,
+                    'parent_user': action.parent_user_id,
+                    'action_user': action.action_user_id,
+                    'comment': action.comment,
+                    'action_datetime': action.action_datetime,
+                    'id': action.id
+                })
+
             profile = {
                 'id': record.id,
                 'full_name': record.full_name,
@@ -2588,6 +2654,8 @@ def get_profile(request, pk):
                 'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
                 'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
                 'is_in_list': SavedListProfiles.objects.filter(profile=record).exists(),
+                'actions': actions_mapping.get(record.id, []),
+                'is_saved': CandidateProfiles.is_saved_for_user(record.id, user_id)
             }
             return JsonResponse({'success': True, 'message': 'Profile retrieved', 'profile': profile}, status=200)
         except Exception as e:
