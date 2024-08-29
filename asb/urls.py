@@ -71,4 +71,6 @@ urlpatterns = [
     path('get-shared-from-list/', views.get_shared_from_list, name='get_shared_from_list'),
     path('delete-shared-profile/<int:pk>/', views.delete_shared_profile, name='delete_shared_profile'),
     path('get-profile/<int:pk>/', views.get_profile, name='get_profile'),
+
+    path('get-activities-list/', views.get_activities_list, name='get_activities_list'),
 ]

@@ -2413,10 +2413,8 @@ def get_shared_from_list(request):
                 records = records.filter(created_at__lte=end_date)
             
             if city:
-                print('here')
                 records = records.filter(Q(profile__person_city__icontains=city))
             if region:
-                print('there')
                 records = records.filter(Q(profile__person_state__icontains=region))
             # if country:
             #     records = records.filter(Q(profile__person_country__icontains=country))
@@ -2596,3 +2594,128 @@ def get_profile(request, pk):
             print(e)
             return JsonResponse({'success': False, 'message': 'Profile not found'}, status=404)
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
+
+
+@csrf_exempt
+def get_activities_list(request):
+    context = {}
+    if request.method == 'POST':
+        try:
+            query_dict = json.loads(request.body)
+            parent_user_id = query_dict.get('parent_user')
+            page_number = query_dict.get("page", 1)
+            search_params = query_dict.get("q", '')
+
+            filter_dict = query_dict.get('filter_data')
+            activity_user_ids = filter_dict.get('activity_users', [])
+            start_date = filter_dict.get('start_date', None)
+            end_date = filter_dict.get('end_date', None)
+            city = filter_dict.get('city', '')
+            state = filter_dict.get('state', '')
+            region = filter_dict.get('region', '')
+            country = filter_dict.get('country', '')
+            action_type = filter_dict.get('action_type', '')
+
+            records = Actions.objects.filter(parent_user_id=parent_user_id).select_related('profile').order_by('-id')
+            
+            if search_params:
+                records = records.filter(Q(profile__first_name__icontains=search_params) | Q(profile__last_name__icontains=search_params) | Q(profile__current_position__icontains=search_params) | Q(profile__company_name__icontains=search_params))
+
+            if len(activity_user_ids) > 0:
+                records = records.filter(action_user_id__in=activity_user_ids)
+            if start_date:
+                records = records.filter(created_at__gte=start_date)
+            if end_date:
+                records = records.filter(created_at__lte=end_date)
+            
+            if city:
+                records = records.filter(Q(profile__person_city__icontains=city))
+            if region:
+                records = records.filter(Q(profile__person_state__icontains=region))
+            # if country:
+            #     records = records.filter(Q(profile__person_country__icontains=country))
+
+            if action_type:
+               records = records.filter(Q(action_type=action_type)) 
+
+            records_per_page = 20
+            paginator = Paginator(records, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
+
+            records_list = []
+            for record in page_obj.object_list:
+                visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate=record.profile, search_user_id=parent_user_id).first()
+                profile_data = {
+                    'id': record.id,
+                    'action_type': record.get_action_type_display(),
+                    'created_by': record.action_user_id,
+                    'created_at': record.created_at,
+                    'updated_at': record.updated_at,
+                    'profile': {
+                        'id': record.profile.id,
+                        'full_name': record.profile.full_name,
+                        'first_name': record.profile.first_name,
+                        'last_name': record.profile.last_name,
+                        'headline': record.profile.headline,
+                        'current_position': record.profile.current_position,
+                        'company_name': record.profile.company_name,
+                        'person_city': record.profile.person_city,
+                        'person_state': record.profile.person_state,
+                        'person_country': record.profile.person_country,
+                        'person_industry': record.profile.person_industry,
+                        'tags': record.profile.tags,
+                        'person_skills': record.profile.person_skills,
+                        'education_experience': record.profile.education_experience,
+                        'company_website': record.profile.company_website,
+                        'email1': record.profile.email1,
+                        'email2': record.profile.email2,
+                        'phone1': record.profile.phone1,
+                        'phone2': record.profile.phone2,
+                        'person_linkedin_url': record.profile.person_linkedin_url,
+                        'company_size_from': record.profile.company_size_from,
+                        'company_size_to': record.profile.company_size_to,
+                        'current_position_2': record.profile.current_position_2,
+                        'current_company_2': record.profile.current_company_2,
+                        'previous_position_2': record.profile.previous_position_2,
+                        'previous_company_2': record.profile.previous_company_2,
+                        'previous_position_3': record.profile.previous_position_3,
+                        'previous_company_3': record.profile.previous_company_3,
+                        'company_city': record.profile.company_city,
+                        'company_state': record.profile.company_state,
+                        'company_country': record.profile.company_country,
+                        'person_angellist_url': record.profile.person_angellist_url,
+                        'person_crunchbase_url': record.profile.person_crunchbase_url,
+                        'person_twitter_url': record.profile.person_twitter_url,
+                        'person_facebook_url': record.profile.person_facebook_url,
+                        'company_linkedin_url': record.profile.company_linkedin_url,
+                        'person_image_url': record.profile.person_image_url,
+                        'company_logo_url': record.profile.company_logo_url,
+                        'show_email1': visibility_toggle.show_email1 if visibility_toggle else False,
+                        'show_email2': visibility_toggle.show_email2 if visibility_toggle else False,
+                        'show_phone1': visibility_toggle.show_phone1 if visibility_toggle else False,
+                        'show_phone2': visibility_toggle.show_phone2 if visibility_toggle else False,
+                        'is_favourite': visibility_toggle.is_favourite if visibility_toggle else False,
+                        'is_in_list': SavedListProfiles.objects.filter(profile=record.profile).exists(),
+                    }
+                }
+                records_list.append(profile_data)
+            
+            context['records'] = records_list
+            
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = total_records
+            return JsonResponse(context, status=200)
+        except Exception as e:
+            print(e)
+            context['success'] = False
+            context['message'] = 'Something bad happened!'
+            return JsonResponse(context, status=500)
+
+    return JsonResponse(context)
