@@ -8,6 +8,14 @@ class CustomUserCreationForm(UserCreationForm):
         model = User
         fields = ('first_name', 'last_name', 'email', 'phone_number', 'profile_picture')
 
+    def clean_phone_number(self):
+        phone_number = self.cleaned_data.get('phone_number')
+        if not len(phone_number) > 10:
+            raise forms.ValidationError("Phone number must be more 10 digits.")
+        if User.objects.filter(phone_number=phone_number).exclude(id=self.instance.id).exists():
+            raise forms.ValidationError("User with this phone number already exists")
+        return phone_number
+
 
 class UserChangeForm(forms.ModelForm):
     
