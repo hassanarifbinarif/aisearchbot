@@ -44,6 +44,8 @@ class UserChangeForm(forms.ModelForm):
         # print(le)
         if not len(phone_number) > 10:
             raise forms.ValidationError("Phone number must be more 10 digits.")
+        if User.objects.filter(phone_number=phone_number).exclude(id=self.instance.id).exists():
+            raise forms.ValidationError("User with this phone number already exists")
         return phone_number
 
     def clean_profile_picture(self):
