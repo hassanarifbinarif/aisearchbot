@@ -1692,6 +1692,7 @@ def get_opened_profiles(request):
                 candidate_dict['show_phone1'] = item.show_phone1
                 candidate_dict['show_phone2'] = item.show_phone2
                 candidate_dict['is_favourite'] = item.is_favourite
+                candidate_dict['is_saved'] = CandidateProfiles.is_saved_for_user(candidate_dict['id'], user_id)
                 candidate_dict['is_opened'] = False
                 if candidate_dict['show_email1'] or candidate_dict['show_email2'] or candidate_dict['show_phone1'] or candidate_dict['show_phone2']:
                         candidate_dict['is_opened'] = True
@@ -2003,7 +2004,7 @@ def get_list_candidates(request, pk):
             context['list_name'] = SavedLists.objects.get(pk=pk).name
 
             page_number = query_dict.get("page", 1)
-            search_params = query_dict.get("q", '')   
+            search_params = query_dict.get("q", '')
             
             search_query =  Q(full_name__icontains=search_params) | Q(email1__icontains=search_params) | Q(email2__icontains=search_params) | Q(company_name__icontains=search_params) | Q(headline__icontains=search_params) | Q(current_position__icontains=search_params) | Q(person_skills__icontains=search_params) | Q(person_city__icontains=search_params) | Q(person_state__icontains=search_params) | Q(person_country__icontains=search_params) 
             records = records.filter(search_query)
