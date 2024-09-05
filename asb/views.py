@@ -9,7 +9,7 @@ from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func,
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
-from aisearchbot.helpers import send_verification_code_email, send_account_credentials_email
+from aisearchbot.helpers import send_verification_code_email, send_account_credentials_email, parallel_bulk_insert, parallel_duplicate_bulk_insert, separate_instances, process_dataframe
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth.forms import AuthenticationForm, AdminPasswordChangeForm, PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
@@ -26,7 +26,6 @@ from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models.functions import Lower
 from operator import or_
-
 
 # authentication views
 def super_admin_login(request):
@@ -451,48 +450,75 @@ def import_file_data(request):
                 duplicate_instances = []
                 is_duplicate = False
 
-                for index, row in df.iterrows():
-                    profile_data = {}
-                    for column_name_in_df, field_name_in_model in column_map_lower.items():
-                        value = row.get(column_name_in_df, None)
-                        if field_name_in_model == 'person_skills' and value:
-                            value = value.split(',')
-                        if (field_name_in_model == 'company_size_from' or field_name_in_model == 'company_size_to') and value:
-                            value = int(float(value))
-                        if value == '':
-                            value = None
-                        profile_data[field_name_in_model] = value
+                linkedin_urls = set(df['person_linkedin_url'].dropna().unique())
+                email1_list = set(df['email_perso'].dropna().unique())
+                email2_list = set(df['email_pro'].dropna().unique())
+                full_names = set(df['full_name'].dropna().unique())
+
+                potential_duplicates = CandidateProfiles.objects.filter(
+                    Q(full_name__in=full_names) |
+                    Q(person_linkedin_url__in=linkedin_urls) |
+                    Q(email1__in=email1_list) |
+                    Q(email2__in=email1_list) |
+                    Q(email1__in=email2_list) |
+                    Q(email2__in=email2_list)
+                )
+
+                lookup = {
+                    'full_name': {profile.full_name: profile for profile in potential_duplicates},
+                    'linkedin': {profile.person_linkedin_url: profile for profile in potential_duplicates},
+                    'email1': {profile.email1: profile for profile in potential_duplicates},
+                    'email2': {profile.email2: profile for profile in potential_duplicates}
+                }
+
+                df = process_dataframe(df, column_map_lower, lookup)
+                new_instances, duplicate_instances = separate_instances(df)
+
+                # for index, row in df.iterrows():
+                #     profile_data = {}
+                #     for column_name_in_df, field_name_in_model in column_map_lower.items():
+                #         value = row.get(column_name_in_df, None)
+                #         if field_name_in_model == 'person_skills' and value:
+                #             value = value.split(',')
+                #         if (field_name_in_model == 'company_size_from' or field_name_in_model == 'company_size_to') and value:
+                #             value = int(float(value))
+                #         if value == '':
+                #             value = None
+                #         profile_data[field_name_in_model] = value
                     
-                    email = profile_data['email1']
-                    email2 = profile_data['email2']
-                    linkedin_url = profile_data['person_linkedin_url']
-                    try:
-                        original_profile = CandidateProfiles.objects.filter(person_linkedin_url=linkedin_url).first()
-                        if email is not None:
-                            if not original_profile:
-                                original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
-                            if not original_profile:
-                                original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
-                        if email2 is not None:    
-                            if not original_profile:
-                                original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
-                            if not original_profile:
-                                original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
-                        if original_profile:
-                            profile_data['original_profile'] = original_profile
-                            duplicate_instances.append(profile_data)
-                            is_duplicate = True
-                        else:
-                            new_instances.append(CandidateProfiles(**profile_data))
-                    except CandidateProfiles.DoesNotExist:
-                        new_instances.append(CandidateProfiles(**profile_data))
+                #     email = profile_data['email1']
+                #     email2 = profile_data['email2']
+                #     linkedin_url = profile_data['person_linkedin_url']
+                #     try:
+                #         original_profile = CandidateProfiles.objects.filter(person_linkedin_url=linkedin_url).first()
+                #         if email is not None:
+                #             if not original_profile:
+                #                 original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email1__isnull=False).first()
+                #             if not original_profile:
+                #                 original_profile = CandidateProfiles.objects.filter(Q(email1=email) | Q(email2=email), email2__isnull=False).first()
+                #         if email2 is not None:    
+                #             if not original_profile:
+                #                 original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email1__isnull=False).first()
+                #             if not original_profile:
+                #                 original_profile = CandidateProfiles.objects.filter(Q(email1=email2) | Q(email2=email2), email2__isnull=False).first()
+                #         if original_profile:
+                #             profile_data['original_profile'] = original_profile
+                #             duplicate_instances.append(profile_data)
+                #             is_duplicate = True
+                #         else:
+                #             new_instances.append(CandidateProfiles(**profile_data))
+                #     except CandidateProfiles.DoesNotExist:
+                #         new_instances.append(CandidateProfiles(**profile_data))
                 
-                CandidateProfiles.objects.bulk_create(new_instances)
+                # CandidateProfiles.objects.bulk_create(new_instances)
+                parallel_bulk_insert(new_instances, chunk_size=1000, max_workers=4)
                 
                 DuplicateProfiles.objects.all().delete()
-                for duplicate_data in duplicate_instances:
-                    DuplicateProfiles.objects.update_or_create(email1=duplicate_data['email1'], defaults=duplicate_data)
-                    
+                parallel_duplicate_bulk_insert(duplicate_instances, chunk_size=1000, max_workers=4)
+                # for duplicate_data in duplicate_instances:
+                #     DuplicateProfiles.objects.update_or_create(email1=duplicate_data['email1'], defaults=duplicate_data)
+                if len(duplicate_instances) > 0:
+                    is_duplicate = True    
                 return JsonResponse({'success': True, 'message': 'Data uploaded', 'is_duplicate': is_duplicate}, status=200)
             return JsonResponse({'success': False, 'message': 'File not found'}, status=400)
         except Exception as e:
