@@ -232,6 +232,7 @@ class DuplicateProfiles(models.Model):
             CandidateProfiles.objects.filter(id=self.original_profile.id).delete()
             CandidateProfiles.objects.create(**profile_data)
         except Exception as e:
+            print('in save duplicate', self.original_profile.id)
             print(e)
         # self.save()
         # # Move the record from DuplicateProfiles to CandidateProfiles
@@ -239,11 +240,14 @@ class DuplicateProfiles(models.Model):
         # self.original_profile.delete()
 
     def merge_and_save(self):
-        for field in ['email1', 'email2', 'phone1', 'phone2']:
-            if not getattr(self, field) and getattr(self.original_profile, field):
-                setattr(self, field, getattr(self.original_profile, field))
+        try:
+            for field in ['email1', 'email2', 'phone1', 'phone2']:
+                if not getattr(self, field) and getattr(self.original_profile, field):
+                    setattr(self, field, getattr(self.original_profile, field))
+            self.save_duplicate()
+        except Exception as e:
+            print('in merge and save', e)
 
-        self.save_duplicate()
 
 
 class ProfileVisibilityToggle(models.Model):
