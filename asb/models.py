@@ -207,6 +207,7 @@ class DuplicateProfiles(models.Model):
 
         if duplicate_non_null_count > original_non_null_count:
             # Save the duplicate, delete the original
+            print('here in first merge and save')
             self.merge_and_save()
         elif duplicate_non_null_count < original_non_null_count:
             for field in ['email1', 'email2', 'phone1', 'phone2']:
@@ -216,18 +217,22 @@ class DuplicateProfiles(models.Model):
                 # If duplicate has no value but the original does, copy the value from the original
                 if not duplicate_value and original_value:
                     setattr(self, field, original_value)
-            
+            print('here in save duplicate')
             self.save_duplicate()
             # # Save the original, delete the duplicate
             # self.delete()
         else:
+            print('here in else')
             # Merge data from original to duplicate
             self.merge_and_save()
 
     def save_duplicate(self):
-        profile_data = {field.name: getattr(self, field.name) for field in DuplicateProfiles._meta.fields if field.name != 'original_profile' and field.name != 'id'}
-        CandidateProfiles.objects.filter(id=self.original_profile.id).delete()
-        CandidateProfiles.objects.create(**profile_data)
+        try:
+            profile_data = {field.name: getattr(self, field.name) for field in DuplicateProfiles._meta.fields if field.name != 'original_profile' and field.name != 'id'}
+            CandidateProfiles.objects.filter(id=self.original_profile.id).delete()
+            CandidateProfiles.objects.create(**profile_data)
+        except Exception as e:
+            print(e)
         # self.save()
         # # Move the record from DuplicateProfiles to CandidateProfiles
         # CandidateProfiles.objects.create(**{field.name: getattr(self, field.name) for field in self._meta.fields})
