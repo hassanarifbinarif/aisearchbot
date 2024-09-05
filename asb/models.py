@@ -229,7 +229,9 @@ class DuplicateProfiles(models.Model):
     def save_duplicate(self):
         try:
             profile_data = {field.name: getattr(self, field.name) for field in DuplicateProfiles._meta.fields if field.name != 'original_profile' and field.name != 'id'}
-            CandidateProfiles.objects.filter(id=self.original_profile.id).delete()
+            original = CandidateProfiles.objects.filter(id=self.original_profile.id)
+            if original.exists():
+                original.delete()
             CandidateProfiles.objects.create(**profile_data)
         except Exception as e:
             print('in save duplicate', self.original_profile.id)

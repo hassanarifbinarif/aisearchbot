@@ -610,7 +610,7 @@ def get_candidate_data(request, params):
         text_template = loader.get_template('ajax/candidate-table.html')
         html = text_template.render({'page_obj':page_obj, 'field_names': context['field_names'], 'search_params': search_params, 'current_page': context['current_page'], 'total_pages': context['total_pages']})
         context['html'] = html
-        context['user_count'] = users.count()
+        context['user_count'] = paginator.count
         context['msg'] = 'Successfully retrieved registered users'
         context['success'] = True
     except Exception as e:
@@ -696,15 +696,22 @@ def resolve_conflict(request):
 @super_admin_required
 def keep_recent_records(request):
     if request.method == "POST":
-        try:
-            duplicate_profiles = DuplicateProfiles.objects.all().order_by('-id')
-            for duplicate in duplicate_profiles:
-                # duplicate.keep_most_recent()         
-                duplicate.resolve_conflict()   
-            return JsonResponse({'success': True, 'message': 'Conflicts resolved successfully'}, status=200)
-        except Exception as e:
-            print(e)
-            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+        duplicate_profiles = DuplicateProfiles.objects.all().order_by('-id')
+        for duplicate in duplicate_profiles:
+            try:
+                duplicate.resolve_conflict()
+            except Exception as e:
+                print(e)
+        return JsonResponse({'success': True, 'message': 'Conflicts resolved successfully'}, status=200)
+        # try:
+        #     duplicate_profiles = DuplicateProfiles.objects.all().order_by('-id')
+        #     for duplicate in duplicate_profiles:
+        #         # duplicate.keep_most_recent()         
+        #         duplicate.resolve_conflict()
+        #     return JsonResponse({'success': True, 'message': 'Conflicts resolved successfully'}, status=200)
+        # except Exception as e:
+        #     print(e)
+        # return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
