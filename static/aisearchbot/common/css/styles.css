@@ -202,7 +202,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 .pagination-div > .pages > span {
-    width: 32px;
+    min-width: 32px;
+    width: fit-content;
     height: 32px;
     background: #FFFFFF;
     border-radius: 5px;
@@ -212,10 +213,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     align-items: center;
     color: var(--primary-black, #000);
     text-align: center;
-    font-size: .75rem;
-    font-style: normal;
+    font-size: .65rem;
     font-weight: 500;
-    line-height: normal;
+    line-height: 12px;
+    padding: 0px 2px;
 }
 
 .pagination-div > .pages > span.active {
