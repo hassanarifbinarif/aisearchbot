@@ -953,7 +953,7 @@ def search_profile(request):
                 operation = query_dict.get('contact_details_radio', 'or')
                 for field in contact_details:
                     if field in field_mapping:
-                        q = Q(**{f"{field_mapping[field]}__isnull": False})
+                        q = Q(**{f"{field_mapping[field]}__isnull": False}) & ~Q(**{f"{field_mapping[field]}": ''})
                         if operation == 'or':
                             query |= q
                         elif operation == 'and':
