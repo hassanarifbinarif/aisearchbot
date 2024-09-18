@@ -3,6 +3,7 @@ let getPreviousPageBtn = document.getElementById('pagination-get-previous-record
 let getNextPageBtn = document.getElementById('pagination-get-next-record-btn');
 let getLastPageBtn = document.getElementById('pagination-get-last-record-btn');
 let filerUploaderInput = document.getElementById('file-uploader');
+let fileErrorMsg = document.querySelector('.import-error-msg');
 
 const sortOrders = {};
 
@@ -170,15 +171,17 @@ async function uploadFile(event, inputField, button){
     let formData = new FormData();
     formData.append('data_file', file[0]);
     try {
+        fileErrorMsg.innerText = '';
+        fileErrorMsg.classList.remove('active');
+        
         beforeLoad(button);
         let response = await requestAPI('/import-data/', formData, {}, 'POST');
         response.json().then(function(res) {
             if (!res.success) {
+                fileErrorMsg.innerText = res.message;
+                fileErrorMsg.classList.add('active');
                 inputField.value = null;
-                afterLoad(button, res.message);
-                setTimeout(() => {
-                    afterLoad(button, 'Import');    
-                }, 1200)
+                afterLoad(button, 'Import');
             }
             else {
                 inputField.value = null;
