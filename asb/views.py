@@ -446,6 +446,12 @@ def import_file_data(request):
                 # Convert the column map to use lowercase keys
                 column_map_lower = {key.lower(): value for key, value in column_map.items()}
 
+                # Get the list of valid columns based on the column_map
+                valid_columns = list(column_map_lower.keys())
+
+                # Filter the DataFrame to include only valid columns
+                df = df[[col for col in df.columns if col.lower() in valid_columns]]
+
                 new_instances = []
                 duplicate_instances = []
                 is_duplicate = False
@@ -523,7 +529,7 @@ def import_file_data(request):
             return JsonResponse({'success': False, 'message': 'File not found'}, status=400)
         except Exception as e:
             print(e)
-            return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
+            return JsonResponse({'success': False, 'message': 'File Import Failed: Please check your file carefully. The column titles may not match the required standards, or some data may be missing. Verify that all required headings are present, in the correct order, and match the standard format before attempting to upload again.'}, status=500)
     return JsonResponse({'success': False, 'message': 'Invalid request'}, status=400)
 
 
@@ -898,7 +904,7 @@ def search_profile(request):
                 match_query = Q()
                 for loc in location_variants:
                     match_query |= (Q(region_name__iexact=loc) | Q(department_name__iexact=loc))
-                matching_locations = LocationDetails.objects.filter(match_query)
+                matching_locations = LocationDetails.objects.filter(match_query).distinct()
                 city_labels = list(matching_locations.values_list('label', flat=True))
 
                 city_labels = [loc.lower() for loc in city_labels]
