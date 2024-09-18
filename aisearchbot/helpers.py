@@ -125,10 +125,11 @@ def get_original_profile(row, lookup):
 
 
 def process_dataframe_chunk(chunk, column_map_lower, lookup):
-    chunk = chunk.replace({pd.NA: None, pd.NaT: None})
+    chunk = chunk.replace({pd.NA: None, pd.NaT: None, '': None})
 
     if 'person_skills' in column_map_lower.keys():
-        chunk['person_skills'] = chunk['person_skills'].apply(lambda x: x.split(',') if pd.notna(x) else None)
+        # chunk['person_skills'] = chunk['person_skills'].apply(lambda x: x.split(',') if pd.notna(x) else None)
+        chunk['person_skills'] = chunk['person_skills'].apply(lambda x: x.split(',') if pd.notna(x) and x != '' else None)
     if 'company_size_from' in column_map_lower.keys():
         chunk['company_size_from'] = pd.to_numeric(chunk['company_size_from'], errors='coerce').fillna(0).astype(int)
     if 'company_size_to' in column_map_lower.keys():

@@ -335,7 +335,7 @@ replacements = {
     'Å‚': 'ł', 'Å„': 'ń', 'Å¡': 'š', 'Å¸': 'Ÿ', 'Å¾': 'ž', 'ã«': 'ë', 'ã©': 'é'
 }
 
-def replace_chars_in_file(file):
+def replace_chars_in_file(file, column_map):
     # Determine the file extension
     file_extension = os.path.splitext(file.name)[1].lower()
     
@@ -362,7 +362,7 @@ def replace_chars_in_file(file):
         
     elif file_extension == '.csv':
         # Load the CSV file
-        df = pd.read_csv(file, dtype=str)
+        df = pd.read_csv(file, dtype=str, usecols=lambda col: col.lower() in column_map)
         
         # Convert column names to lowercase
         df.columns = df.columns.str.lower()
@@ -391,18 +391,7 @@ def import_file_data(request):
                 file_extension = os.path.splitext(file.name)[1].lower()
                 if file_extension not in ['.xlsx', '.xls', '.csv']:
                     return JsonResponse({'success': False, 'message': 'Invalid file format'}, status=400)
-                
-                cleaned_data, status = replace_chars_in_file(file)
-                if not status['success']:
-                    return JsonResponse(status, status=400)
-                
-                if file_extension in ['.xlsx', '.xls']:
-                    df = pd.concat(cleaned_data.values(), ignore_index=True)
-                else:
-                    df = cleaned_data
 
-                df.fillna('', inplace=True)
-                
                 column_map = {
                     'full_name': 'full_name',
                     'first_name': 'first_name',
@@ -445,6 +434,17 @@ def import_file_data(request):
 
                 # Convert the column map to use lowercase keys
                 column_map_lower = {key.lower(): value for key, value in column_map.items()}
+                
+                cleaned_data, status = replace_chars_in_file(file, column_map_lower)
+                if not status['success']:
+                    return JsonResponse(status, status=400)
+                
+                if file_extension in ['.xlsx', '.xls']:
+                    df = pd.concat(cleaned_data.values(), ignore_index=True)
+                else:
+                    df = cleaned_data
+
+                df.fillna('', inplace=True)
 
                 # Get the list of valid columns based on the column_map
                 valid_columns = list(column_map_lower.keys())
