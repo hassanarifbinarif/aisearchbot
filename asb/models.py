@@ -84,6 +84,7 @@ class CandidateProfilesQuerySet(models.QuerySet):
         
         return conditions
 
+
 class CandidateProfilesManager(models.Manager):
     def get_queryset(self):
         return CandidateProfilesQuerySet(self.model, using=self._db)
@@ -251,7 +252,6 @@ class DuplicateProfiles(models.Model):
             print('in merge and save', e)
 
 
-
 class ProfileVisibilityToggle(models.Model):
     search_user_id = models.IntegerField()
     candidate = models.ForeignKey(CandidateProfiles, on_delete=models.CASCADE)
@@ -325,6 +325,23 @@ class SharedProfiles(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
+
+class Need(models.Model):
+    user = models.IntegerField()
+    name = models.CharField(max_length=128)
+    job_title = models.TextField(null=True, blank=True)
+    location = models.TextField(null=True, blank=True)
+    skills = models.TextField(null=True, blank=True)
+    current_company = models.TextField(null=True, blank=True)
+    head_count = models.TextField(null=True, blank=True)
+    start_date = models.DateTimeField()
+    end_date = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True, null=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"user id " + str(self.user) + " searched for "+ self.name
+    
 
 # Signals
 

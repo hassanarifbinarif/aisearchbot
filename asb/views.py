@@ -14,18 +14,20 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.contrib.auth.forms import AuthenticationForm, AdminPasswordChangeForm, PasswordChangeForm
 from django.contrib.auth import update_session_auth_hash
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.http import require_http_methods
 from django.contrib.auth import login, authenticate, logout
 from django.contrib import messages
 from django.shortcuts import render, redirect
 from django.utils import timezone
 from asb.priorities import boolean_keyword_with_job_title_or_skill, keyword_with_job_title_or_skill
-from .models import Actions, CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, SharedProfiles, User, OTP, SharedUsers, SavedListProfiles
+from .models import Actions, CandidateProfiles, DuplicateProfiles, LocationDetails, ProfileVisibilityToggle, SavedListProfiles, SavedLists, SharedProfiles, User, OTP, SharedUsers, SavedListProfiles, Need
 from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
 from django.db.models.functions import Lower
 from operator import or_
+from django.forms.models import model_to_dict
 
 # authentication views
 def super_admin_login(request):
@@ -1229,6 +1231,219 @@ def search_profile(request):
             return JsonResponse(context, status=500)
 
     return JsonResponse(context)
+
+
+# Function to calculate match score
+def calculate_match_score(profile, filters):
+    score = 0
+    job_title_matches = 0
+    skill_matches_in_job_title = 0
+    skill_matches_in_top_skills = 0
+
+    # Ensure headline and current_position are not None
+    headline = profile.headline or ''
+    current_position = profile.current_position or ''
+    
+    # Check job title match (headline and current_position separately using regex)
+    for keyword in filters['job_title']:
+        job_title_pattern = build_regex_pattern(keyword)
+        
+        # Search for a match in headline and current_position using the regex pattern
+        if re.search(job_title_pattern, headline) or re.search(job_title_pattern, current_position):
+            job_title_matches += 1
+
+    # Check skills matching job title (headline and current_position separately using regex)
+    for skill in filters['technologies']:
+        skill_pattern = build_regex_pattern(skill)
+        
+        # Search for a match in headline and current_position using the regex pattern
+        if re.search(skill_pattern, headline) or re.search(skill_pattern, current_position):
+            skill_matches_in_job_title += 1
+    
+    # Check skills matching top 3 profile skills (default to an empty list if person_skills is None)
+    top_skills = profile.person_skills or []
+    top_skills = top_skills[:3]
+    for skill in filters['technologies']:
+        top_skill_pattern = build_regex_pattern(skill)
+        
+        # Check if the skill matches in the top 3 skills using regex
+        for top_skill in top_skills:
+            if re.search(top_skill_pattern, top_skill):
+                skill_matches_in_top_skills += 1
+                break  # Stop after the first match to avoid counting multiple times
+
+    job_title_keywords = filters['job_title']
+    technologies = filters['technologies']
+    
+    # Calculate match percentages
+    job_title_match_percentage = (job_title_matches / len(job_title_keywords)) * 100 if job_title_keywords else 0
+    skill_match_percentage = (skill_matches_in_job_title / len(technologies)) * 100 if technologies else 0
+    top_skill_match_percentage = (skill_matches_in_top_skills / len(technologies)) * 100 if technologies else 0
+
+    # Calculate the average percentage match
+    avg_match_percentage = (job_title_match_percentage + skill_match_percentage + top_skill_match_percentage) / 3
+
+    # Adjust score based on conditions
+    if job_title_matches >= 1 and skill_matches_in_job_title >= 2:
+        base_score = 90 
+    elif job_title_matches >= 1 and skill_matches_in_job_title >= 1:
+        base_score = 80 
+    elif job_title_matches >= 1 and skill_matches_in_top_skills >= 1:
+        base_score = 60  
+    else:
+        base_score = 50  # Default base score for no significant matches
+
+    # Calculate final score by adding a portion of the average match percentage to the base score
+    score = base_score + (avg_match_percentage / 10)  # Add a fraction of the avg match percentage (scaled down)
+
+    return min(score, 100)
+
+def search_needs_profiles(request):
+    # Step 1: Get all candidate profiles (using a queryset) and order by '-id'
+    records = CandidateProfiles.objects.all().order_by('-id')
+    data = json.loads(request.body)
+    
+    
+
+    # Step 2: Define filters (you can modify this to take filters from the request)
+    # user_filters = {
+    #     'job_title': ['java', 'python', 'django', 'manager', 'developer', 'engineer'],
+    #     'technologies': ['java', 'python', 'django', 'manager', 'developer', 'engineer', 'Telecommunications', 'Data Governance Manager at Docaposte', 'Responsable Domaine Data', 'Microsoft Office', 'Data management', 'Microsoft Power BI', 'Direction de programme'],
+    # }
+    
+    user_filters = {
+        'job_title': data.get('job_title', []),
+        'technologies': data.get('technologies', []),
+    }
+
+    # Step 3: Retrieve the score filter from the query parameters (e.g., min_score=90)
+    min_score = int(request.GET.get('min_score', 0))  # Default to 0 if no min_score is provided
+
+    # Step 4: Apply matching logic and filter profiles by match_score
+    filtered_profiles = []
+    for profile in records:
+        match_score = calculate_match_score(profile, user_filters)
+        if match_score >= min_score:
+            # Store both the profile and the score together
+            profile_with_score = {
+                'profile': model_to_dict(profile),  # Convert profile to a dictionary
+                'match_score': match_score  # Include the match score
+            }
+            filtered_profiles.append(profile_with_score)
+
+    filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
+
+    # Step 5: Paginate the filtered profiles
+    paginator = Paginator(filtered_profiles, 20)  # Paginate filtered results (20 profiles per page)
+    page_number = request.GET.get('page', 1)
+    page_obj = paginator.get_page(page_number)
+    
+    # Step 6: Extract the list of profiles with scores for the current page
+    paginated_profiles = list(page_obj.object_list)  # No need for `.values()`, already dicts
+
+    # Step 7: Return the filtered and paginated profiles as JSON
+    return JsonResponse({
+        'filtered_profiles': paginated_profiles,
+        'pagination': {
+            'current_page': page_obj.number,
+            'total_pages': paginator.num_pages,
+            'has_next': page_obj.has_next(),
+            'has_previous': page_obj.has_previous(),
+        }
+    })
+
+@csrf_exempt
+def save_need_filters(request):
+    if request.method == "POST":
+        try:
+            # Parse the JSON data from the request body
+            data = json.loads(request.body)
+            
+            # Retrieve data from the request
+            user = data.get('user')
+            name = data.get('name')
+
+            # For fields that expect a list, convert them into comma-separated strings
+            job_title = ', '.join(data.get('job_title', [])) if isinstance(data.get('job_title'), list) else ''
+            location = ', '.join(data.get('location', [])) if isinstance(data.get('location'), list) else ''
+            skills = ', '.join(data.get('skills', [])) if isinstance(data.get('skills'), list) else ''
+            current_company = ', '.join(data.get('current_company', [])) if isinstance(data.get('current_company'), list) else '' 
+            head_count = ', '.join(data.get('head_count', [])) if isinstance(data.get('head_count'), list) else ''
+            start_date = data.get('start_date')
+            end_date = data.get('end_date')
+
+            # Convert start_date and end_date to datetime objects if needed
+            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+
+            # Create a new Need instance and save it to the database
+            need = Need.objects.create(
+                user=user,
+                name=name,
+                job_title=job_title, 
+                location=location,   
+                skills=skills,        
+                current_company=current_company,
+                head_count=head_count, 
+                start_date=start_date,
+                end_date=end_date
+            )
+            
+            # Return a success response
+            return JsonResponse({
+                'message': 'Need filter saved successfully',
+                'need_id': need.id
+            }, status=201)
+
+        except (ValueError, KeyError) as e:
+            return JsonResponse({'error': str(e)}, status=400)
+
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+    
+def get_needs(request):
+    if request.method == "GET":
+        try:
+            # Retrieve all Need records from the database
+            needs = Need.objects.all().order_by('-created_at')
+
+            # Convert each Need instance into a dictionary and split comma-separated fields into lists
+            needs_data = []
+            for need in needs:
+                need_dict = model_to_dict(need)  # Convert model instance to dict
+                
+                # Convert comma-separated strings back to lists for specific fields
+                need_dict['job_title'] = need.job_title.split(', ') if need.job_title else []
+                need_dict['location'] = need.location.split(', ') if need.location else []
+                need_dict['skills'] = need.skills.split(', ') if need.skills else []
+                need_dict['head_count'] = need.head_count.split(', ') if need.head_count else []
+
+                needs_data.append(need_dict)
+
+            # Return the needs data as JSON
+            return JsonResponse({
+                'needs': needs_data,
+            }, status=200)
+
+        except Exception as e:
+            return JsonResponse({'error': str(e)}, status=500)
+
+    else:
+        return JsonResponse({'error': 'Invalid request method'}, status=405)
+
+@csrf_exempt
+@require_http_methods(["DELETE"])
+def delete_need(request, need_id):
+    try:
+        need = Need.objects.get(id=need_id)
+        need.delete()
+        return JsonResponse({'message': 'Need deleted successfully'}, status=204)
+
+    except Need.DoesNotExist:
+        return JsonResponse({'error': 'Need not found'}, status=404)
+
+    except Exception as e:
+        return JsonResponse({'error': str(e)}, status=500)
 
 
 class ArrayToString(Func):
