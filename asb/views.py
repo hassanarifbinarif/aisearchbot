@@ -1233,124 +1233,275 @@ def search_profile(request):
     return JsonResponse(context)
 
 
-# Function to calculate match score
+@csrf_exempt
+def search_profile_with_needs(request):
+    if request.method != 'POST':
+        return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
+
+    try:
+        # Load and parse request data
+        query_dict = json.loads(request.body)
+        user = query_dict.get('user_id')
+        # keywords = query_dict.get('keywords', '').lower()
+        location = query_dict.get('location', [])
+        job_titles = query_dict.get('jobs_title_list', [])
+        skills = query_dict.get('skills_list', [])
+        company_names = query_dict.get('company_name_list', [])
+        company_size_ranges = query_dict.get('company_size_ranges', [])
+        contact_details = query_dict.get('contact_details', '')
+        min_score = int(request.GET.get('min_score', 0))
+
+        # Define the filters for matching
+        filters = {
+            'job_title': job_titles,
+            'technologies': skills,
+        }
+
+        # Prepare querysets and filters
+        records = CandidateProfiles.objects.all().order_by('-id').annotate(
+            lower_company_name=Lower('company_name'),
+            personCity=Lower('person_city'),
+            personState=Lower('person_state'),
+            personCountry=Lower('person_country')
+        )
+
+        # Apply additional filters like location, company, etc.
+        if location:
+            records = filter_by_location(records, location)
+
+        if company_names:
+            records = records.filter(build_company_name_filter(company_names))
+
+        if company_size_ranges:
+            records = filter_by_company_size(records, company_size_ranges)
+
+        if contact_details:
+            records = filter_by_contact_details(records, contact_details)
+
+        # # Filter by keywords, job titles, and skills
+        # records = filter_by_keywords(records, keywords, job_titles, skills)
+        
+
+        # Step 4: Apply matching logic and filter profiles by match_score
+        filtered_profiles = []
+        for profile in records:
+            match_score = calculate_match_score(profile, filters)
+            if match_score >= min_score:  # Optionally, apply a minimum score filter
+                profile_with_score = {
+                    'profile': model_to_dict(profile),  # Convert profile to a dictionary
+                    'match_score': match_score  # Include the match score
+                }
+                filtered_profiles.append(profile_with_score)
+
+        # Step 5: Sort profiles by match score in descending order
+        filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
+
+        # Step 6: Paginate the results
+        paginator = Paginator(filtered_profiles, 20)  # Paginate filtered results (20 profiles per page)
+        page_number = request.GET.get('page', 1)
+        page_obj = paginator.get_page(page_number)
+
+        paginated_profiles = list(page_obj.object_list)
+
+        # Step 7: Return the filtered and paginated profiles as JSON
+        return JsonResponse({
+            'filtered_profiles': paginated_profiles,
+            'pagination': {
+                'current_page': page_obj.number,
+                'total_pages': paginator.num_pages,
+                'has_next': page_obj.has_next(),
+                'has_previous': page_obj.has_previous(),
+            }
+        })
+
+    except json.JSONDecodeError:
+        return JsonResponse({"success": False, "message": "Invalid JSON data."}, status=400)
+    except Exception as e:
+        return JsonResponse({"success": False, "message": str(e)}, status=500)
+    
+
+def filter_by_location(records, location):
+    location = [loc.lower() for loc in location if loc.lower() != 'france']
+    if not location:
+        return records
+
+    location_variants = generate_location_variants(location)
+    matching_locations = LocationDetails.objects.filter(
+        Q(region_name__in=location_variants) |
+        Q(department_name__in=location_variants)
+    ).distinct()
+
+    city_labels = generate_location_variants([loc.lower() for loc in matching_locations.values_list('label', flat=True)])
+    return records.filter(Q(personCity__in=location_variants + city_labels) |
+                          Q(personState__in=location_variants + city_labels) |
+                          Q(personCountry__in=location_variants + city_labels))
+
+
+def build_company_name_filter(company_names):
+    query = Q()
+    for company in company_names:
+        query |= Q(company_name__icontains=company)
+    return query
+
+
+def filter_by_company_size(records, company_size_ranges):
+    company_size_query = Q()
+    for size_range in company_size_ranges:
+        size_from = size_range.get('from')
+        size_to = size_range.get('to')
+
+        if size_from and size_to:
+            company_size_query |= Q(company_size_from__range=(size_from, size_to))
+        elif size_from:
+            company_size_query |= Q(company_size_from__gte=size_from)
+
+    return records.filter(company_size_query & Q(company_size_to__isnull=True) |
+                          Q(company_size_from__lte=F('company_size_to')))
+
+
+def filter_by_contact_details(records, contact_keyword):
+    # Define mappings for each type of contact detail
+    field_mapping = {
+        'email': ['email1', 'email2'],
+        'phone': ['phone1', 'phone2'],
+        'phone_email': ['email1', 'email2', 'phone1', 'phone2']
+    }
+
+    # Get the fields corresponding to the contact keyword
+    fields = field_mapping.get(contact_keyword)
+    if not fields:
+        raise ValueError("Invalid contact keyword. Choose 'phone', 'email', or 'phone_email'.")
+
+    # Build the query based on the contact keyword
+    query = Q()
+    for field in fields:
+        condition = Q(**{f"{field}__isnull": False}) & ~Q(**{f"{field}": ''})
+        query |= condition  # Use OR to match any of the fields
+
+    # Apply the query to filter the records
+    return records.filter(query)
+
+
+def filter_by_keywords(records, keywords, job_titles, skills):
+    if is_advanced_search(keywords):
+        keyword_query = boolean_search(keywords)
+    else:
+        keyword_query = build_keyword_query(keywords, ['headline', 'current_position'])
+
+    job_skill_list = job_titles + skills
+    combined_keyword_query = Q()
+
+    for job_skill in job_skill_list:
+        combined_keyword_query |= Q(full_name__icontains=job_skill) | \
+                                  Q(first_name__icontains=job_skill) | \
+                                  Q(last_name__icontains=job_skill) | \
+                                  Q(headline__icontains=job_skill) | \
+                                  Q(current_position__icontains=job_skill)
+
+    return records.filter(keyword_query | combined_keyword_query)
+
+
+def generate_location_variants(locations):
+    normalized = [loc.replace('-', ' ') for loc in locations]
+    hyphenated = [loc.replace(' ', '-') for loc in locations]
+    return list(set(locations + normalized + hyphenated))
+
+
 def calculate_match_score(profile, filters):
     score = 0
     job_title_matches = 0
     skill_matches_in_job_title = 0
     skill_matches_in_top_skills = 0
 
-    # Ensure headline and current_position are not None
     headline = profile.headline or ''
     current_position = profile.current_position or ''
-    
-    # Check job title match (headline and current_position separately using regex)
+
     for keyword in filters['job_title']:
         job_title_pattern = build_regex_pattern(keyword)
-        
-        # Search for a match in headline and current_position using the regex pattern
         if re.search(job_title_pattern, headline) or re.search(job_title_pattern, current_position):
             job_title_matches += 1
 
-    # Check skills matching job title (headline and current_position separately using regex)
     for skill in filters['technologies']:
         skill_pattern = build_regex_pattern(skill)
-        
-        # Search for a match in headline and current_position using the regex pattern
         if re.search(skill_pattern, headline) or re.search(skill_pattern, current_position):
             skill_matches_in_job_title += 1
-    
-    # Check skills matching top 3 profile skills (default to an empty list if person_skills is None)
+
     top_skills = profile.person_skills or []
     top_skills = top_skills[:3]
     for skill in filters['technologies']:
         top_skill_pattern = build_regex_pattern(skill)
-        
-        # Check if the skill matches in the top 3 skills using regex
         for top_skill in top_skills:
             if re.search(top_skill_pattern, top_skill):
                 skill_matches_in_top_skills += 1
-                break  # Stop after the first match to avoid counting multiple times
+                break
 
     job_title_keywords = filters['job_title']
     technologies = filters['technologies']
-    
-    # Calculate match percentages
+
     job_title_match_percentage = (job_title_matches / len(job_title_keywords)) * 100 if job_title_keywords else 0
     skill_match_percentage = (skill_matches_in_job_title / len(technologies)) * 100 if technologies else 0
     top_skill_match_percentage = (skill_matches_in_top_skills / len(technologies)) * 100 if technologies else 0
 
-    # Calculate the average percentage match
     avg_match_percentage = (job_title_match_percentage + skill_match_percentage + top_skill_match_percentage) / 3
 
-    # Adjust score based on conditions
     if job_title_matches >= 1 and skill_matches_in_job_title >= 2:
-        base_score = 90 
+        base_score = 90
     elif job_title_matches >= 1 and skill_matches_in_job_title >= 1:
-        base_score = 80 
+        base_score = 80
     elif job_title_matches >= 1 and skill_matches_in_top_skills >= 1:
-        base_score = 60  
+        base_score = 60
     else:
-        base_score = 50  # Default base score for no significant matches
+        base_score = 50
 
-    # Calculate final score by adding a portion of the average match percentage to the base score
-    score = base_score + (avg_match_percentage / 10)  # Add a fraction of the avg match percentage (scaled down)
-
+    score = base_score + (avg_match_percentage / 10)
     return min(score, 100)
 
-def search_needs_profiles(request):
-    # Step 1: Get all candidate profiles (using a queryset) and order by '-id'
-    records = CandidateProfiles.objects.all().order_by('-id')
-    data = json.loads(request.body)
+
+# def search_needs_profiles(request):
+#     # Step 1: Get all candidate profiles (using a queryset) and order by '-id'
+#     records = CandidateProfiles.objects.all().order_by('-id')
+#     data = json.loads(request.body)
     
+#     user_filters = {
+#         'job_title': data.get('job_title', []),
+#         'technologies': data.get('technologies', []),
+#     }
+
+#     # Step 3: Retrieve the score filter from the query parameters (e.g., min_score=90)
+#     min_score = int(request.GET.get('min_score', 0))  # Default to 0 if no min_score is provided
+
+#     # Step 4: Apply matching logic and filter profiles by match_score
+#     filtered_profiles = []
+#     for profile in records:
+#         match_score = calculate_match_score(profile, user_filters)
+#         if match_score >= min_score:
+#             # Store both the profile and the score together
+#             profile_with_score = {
+#                 'profile': model_to_dict(profile),  # Convert profile to a dictionary
+#                 'match_score': match_score  # Include the match score
+#             }
+#             filtered_profiles.append(profile_with_score)
+
+#     filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
+
+#     # Step 5: Paginate the filtered profiles
+#     paginator = Paginator(filtered_profiles, 20)  # Paginate filtered results (20 profiles per page)
+#     page_number = request.GET.get('page', 1)
+#     page_obj = paginator.get_page(page_number)
     
+#     # Step 6: Extract the list of profiles with scores for the current page
+#     paginated_profiles = list(page_obj.object_list)  # No need for `.values()`, already dicts
 
-    # Step 2: Define filters (you can modify this to take filters from the request)
-    # user_filters = {
-    #     'job_title': ['java', 'python', 'django', 'manager', 'developer', 'engineer'],
-    #     'technologies': ['java', 'python', 'django', 'manager', 'developer', 'engineer', 'Telecommunications', 'Data Governance Manager at Docaposte', 'Responsable Domaine Data', 'Microsoft Office', 'Data management', 'Microsoft Power BI', 'Direction de programme'],
-    # }
-    
-    user_filters = {
-        'job_title': data.get('job_title', []),
-        'technologies': data.get('technologies', []),
-    }
-
-    # Step 3: Retrieve the score filter from the query parameters (e.g., min_score=90)
-    min_score = int(request.GET.get('min_score', 0))  # Default to 0 if no min_score is provided
-
-    # Step 4: Apply matching logic and filter profiles by match_score
-    filtered_profiles = []
-    for profile in records:
-        match_score = calculate_match_score(profile, user_filters)
-        if match_score >= min_score:
-            # Store both the profile and the score together
-            profile_with_score = {
-                'profile': model_to_dict(profile),  # Convert profile to a dictionary
-                'match_score': match_score  # Include the match score
-            }
-            filtered_profiles.append(profile_with_score)
-
-    filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
-
-    # Step 5: Paginate the filtered profiles
-    paginator = Paginator(filtered_profiles, 20)  # Paginate filtered results (20 profiles per page)
-    page_number = request.GET.get('page', 1)
-    page_obj = paginator.get_page(page_number)
-    
-    # Step 6: Extract the list of profiles with scores for the current page
-    paginated_profiles = list(page_obj.object_list)  # No need for `.values()`, already dicts
-
-    # Step 7: Return the filtered and paginated profiles as JSON
-    return JsonResponse({
-        'filtered_profiles': paginated_profiles,
-        'pagination': {
-            'current_page': page_obj.number,
-            'total_pages': paginator.num_pages,
-            'has_next': page_obj.has_next(),
-            'has_previous': page_obj.has_previous(),
-        }
-    })
+#     # Step 7: Return the filtered and paginated profiles as JSON
+#     return JsonResponse({
+#         'filtered_profiles': paginated_profiles,
+#         'pagination': {
+#             'current_page': page_obj.number,
+#             'total_pages': paginator.num_pages,
+#             'has_next': page_obj.has_next(),
+#             'has_previous': page_obj.has_previous(),
+#         }
+#     })
 
 @csrf_exempt
 def save_need_filters(request):
