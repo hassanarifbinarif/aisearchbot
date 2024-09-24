@@ -837,6 +837,18 @@ keyword_fields = [
 ]
 
 
+search_fields = [
+    'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
+    'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
+    'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
+    'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
+    'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
+    'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
+    'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
+    'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url', 'company_logo_url'
+]
+
+
 class ArrayLength(Func):
     function = 'array_length'
     template = '%(function)s(%(expressions)s, 1)'
@@ -874,17 +886,6 @@ def search_profile(request):
                 company_size_from = None
             if company_size_to in ["", "null"]:
                 company_size_to = None
-
-            search_fields = [
-                'id', 'full_name', 'first_name', 'last_name', 'headline', 'current_position',
-                'company_name', 'person_city', 'person_state', 'person_country', 'person_industry',
-                'tags', 'person_skills', 'education_experience', 'company_website', 'email1',
-                'email2', 'phone1', 'phone2', 'person_linkedin_url', 'company_size_from',
-                'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
-                'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
-                'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
-                'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url', 'company_logo_url'
-            ]
 
             records = CandidateProfiles.objects.all().order_by('-id')
             records = records.annotate(
@@ -1239,17 +1240,16 @@ def search_profile_with_needs(request):
         return JsonResponse({"success": False, "message": "Invalid request method."}, status=405)
 
     try:
-        # Load and parse request data
+        context = {}
         query_dict = json.loads(request.body)
         user = query_dict.get('user_id')
-        # keywords = query_dict.get('keywords', '').lower()
-        location = query_dict.get('location', [])
-        job_titles = query_dict.get('jobs_title_list', [])
-        skills = query_dict.get('skills_list', [])
-        company_names = query_dict.get('company_name_list', [])
-        company_size_ranges = query_dict.get('company_size_ranges', [])
+        location = query_dict.get('locations', [])
+        job_titles = query_dict.get('job_titles', [])
+        skills = query_dict.get('skills', [])
+        company_names = query_dict.get('company_names', [])
+        company_size_ranges = query_dict.get('company_size_range', [])
         contact_details = query_dict.get('contact_details', '')
-        min_score = int(request.GET.get('min_score', 0))
+        min_score = query_dict.get('min_score', 0)
 
         # Define the filters for matching
         filters = {
@@ -1280,7 +1280,19 @@ def search_profile_with_needs(request):
 
         # # Filter by keywords, job titles, and skills
         # records = filter_by_keywords(records, keywords, job_titles, skills)
+
+        j_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
+        s_queries = build_keyword_query(skills, [], ['person_skills'])
         
+        if len(job_titles) > 0:
+            records = records.filter(j_queries).annotate(priority=Value(5, output_field=IntegerField()))
+        elif len(skills) > 0:
+            records = records.filter(s_queries).annotate(priority=Value(5, output_field=IntegerField()))
+        else:
+            records = records.annotate(priority=Value(999999, output_field=IntegerField()))
+
+        records = keyword_with_job_title_or_skill(records, '', job_titles, skills)
+
 
         # Step 4: Apply matching logic and filter profiles by match_score
         filtered_profiles = []
@@ -1293,26 +1305,102 @@ def search_profile_with_needs(request):
                 }
                 filtered_profiles.append(profile_with_score)
 
-        # Step 5: Sort profiles by match score in descending order
-        filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
+        # # Step 5: Sort profiles by match score in descending order
+        # filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
 
         # Step 6: Paginate the results
-        paginator = Paginator(filtered_profiles, 20)  # Paginate filtered results (20 profiles per page)
-        page_number = request.GET.get('page', 1)
+        page_number = query_dict.get("page", 1)
+        records_per_page = 20
+        paginator = Paginator(filtered_profiles, records_per_page)
         page_obj = paginator.get_page(page_number)
+        context['current_page'] = page_obj.number
+        context['total_pages'] = paginator.num_pages
+        context['has_next'] = page_obj.has_next()
+        context['has_previous'] = page_obj.has_previous()
 
-        paginated_profiles = list(page_obj.object_list)
+        actions = Actions.objects.filter(parent_user_id=user).order_by('-id')
+        actions_mapping = {}
+        for action in actions:
+            if action.profile_id not in actions_mapping:
+                actions_mapping[action.profile_id] = []
+            actions_mapping[action.profile_id].append({
+                'action_type': action.get_action_type_display(),
+                'action_type_value': action.action_type,
+                'parent_user': action.parent_user_id,
+                'action_user': action.action_user_id,
+                'comment': action.comment,
+                'action_datetime': action.action_datetime,
+                'id': action.id
+            })
 
-        # Step 7: Return the filtered and paginated profiles as JSON
-        return JsonResponse({
-            'filtered_profiles': paginated_profiles,
-            'pagination': {
-                'current_page': page_obj.number,
-                'total_pages': paginator.num_pages,
-                'has_next': page_obj.has_next(),
-                'has_previous': page_obj.has_previous(),
+
+        # Prepare results
+        page_obj_list = []
+        for item in page_obj.object_list:
+            visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate__id=item['profile']['id'], search_user_id=user).first()
+            
+            candidate_dict = {
+                'id': item['profile']['id'],
+                'full_name': item['profile']['full_name'],
+                'first_name': item['profile']['first_name'],
+                'last_name': item['profile']['last_name'],
+                'headline': item['profile']['headline'],
+                'current_position': item['profile']['current_position'],
+                'company_name': item['profile']['company_name'],
+                'person_city': item['profile']['person_city'],
+                'person_state': item['profile']['person_state'],
+                'person_country': item['profile']['person_country'],
+                'person_industry': item['profile']['person_industry'],
+                'tags': item['profile']['tags'],
+                'person_skills': item['profile']['person_skills'],
+                'education_experience': item['profile']['education_experience'],
+                'company_website': item['profile']['company_website'],
+                'email1': item['profile']['email1'],
+                'email2': item['profile']['email2'],
+                'phone1': item['profile']['phone1'],
+                'phone2': item['profile']['phone2'],
+                'person_linkedin_url': item['profile']['person_linkedin_url'],
+                'company_size_from': item['profile']['company_size_from'],
+                'company_size_to': item['profile']['company_size_to'],
+                'current_position_2': item['profile']['current_position_2'],
+                'current_company_2': item['profile']['current_company_2'],
+                'previous_position_2': item['profile']['previous_position_2'],
+                'previous_company_2': item['profile']['previous_company_2'],
+                'previous_position_3': item['profile']['previous_position_3'],
+                'previous_company_3': item['profile']['previous_company_3'],
+                'company_city': item['profile']['company_city'],
+                'company_state': item['profile']['company_state'],
+                'company_country': item['profile']['company_country'],
+                'person_angellist_url': item['profile']['person_angellist_url'],
+                'person_crunchbase_url': item['profile']['person_crunchbase_url'],
+                'person_twitter_url': item['profile']['person_twitter_url'],
+                'person_facebook_url': item['profile']['person_facebook_url'],
+                'company_linkedin_url': item['profile']['company_linkedin_url'],
+                'person_image_url': item['profile']['person_image_url'],
+                'company_logo_url': item['profile']['company_logo_url'],
+                'match_score': item['match_score']
             }
-        })
+            candidate_dict['actions'] = actions_mapping.get(item['profile']['id'], [])
+            candidate_dict['show_email1'] = visibility_toggle.show_email1 if visibility_toggle else False
+            candidate_dict['show_email2'] = visibility_toggle.show_email2 if visibility_toggle else False
+            candidate_dict['show_phone1'] = visibility_toggle.show_phone1 if visibility_toggle else False
+            candidate_dict['show_phone2'] = visibility_toggle.show_phone2 if visibility_toggle else False
+            candidate_dict['is_favourite'] = visibility_toggle.is_favourite if visibility_toggle else False
+            candidate_dict['is_saved'] = CandidateProfiles.is_saved_for_user(candidate_dict['id'], user)
+            candidate_dict['is_opened'] = False
+            if candidate_dict['show_email1'] or candidate_dict['show_email2'] or candidate_dict['show_phone1'] or candidate_dict['show_phone2']:
+                    candidate_dict['is_opened'] = True
+            page_obj_list.append(candidate_dict)
+
+        page_obj = update_country(page_obj_list, location)
+        total_records = paginator.count
+
+        context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+        context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
+        context['success'] = True
+        context['records_count'] = total_records
+        context['records'] = page_obj
+        return JsonResponse(context, status=200)
 
     except json.JSONDecodeError:
         return JsonResponse({"success": False, "message": "Invalid JSON data."}, status=400)
@@ -1345,18 +1433,27 @@ def build_company_name_filter(company_names):
 
 
 def filter_by_company_size(records, company_size_ranges):
-    company_size_query = Q()
-    for size_range in company_size_ranges:
-        size_from = size_range.get('from')
-        size_to = size_range.get('to')
-
-        if size_from and size_to:
-            company_size_query |= Q(company_size_from__range=(size_from, size_to))
-        elif size_from:
-            company_size_query |= Q(company_size_from__gte=size_from)
-
-    return records.filter(company_size_query & Q(company_size_to__isnull=True) |
-                          Q(company_size_from__lte=F('company_size_to')))
+    if len(company_size_ranges) > 0:
+        company_size_query = Q()
+        for size_range in company_size_ranges:
+            size_from = size_range.get('from')
+            size_to = size_range.get('to')
+            try:
+                size_from = int(size_from)
+            except (ValueError, TypeError):
+                continue
+            try:
+                size_to = int(size_to)
+            except (ValueError, TypeError):
+                size_to = None
+            if size_to is None:
+                company_size_query |= Q(company_size_from__gte=size_from)
+            else:
+                company_size_query |= Q(company_size_from__range=(size_from, size_to))
+        valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
+        records = records.filter(company_size_query & valid_data_query)
+    
+    return records
 
 
 def filter_by_contact_details(records, contact_keyword):
@@ -1376,9 +1473,8 @@ def filter_by_contact_details(records, contact_keyword):
     query = Q()
     for field in fields:
         condition = Q(**{f"{field}__isnull": False}) & ~Q(**{f"{field}": ''})
-        query |= condition  # Use OR to match any of the fields
+        query |= condition
 
-    # Apply the query to filter the records
     return records.filter(query)
 
 
@@ -1457,52 +1553,6 @@ def calculate_match_score(profile, filters):
     return min(score, 100)
 
 
-# def search_needs_profiles(request):
-#     # Step 1: Get all candidate profiles (using a queryset) and order by '-id'
-#     records = CandidateProfiles.objects.all().order_by('-id')
-#     data = json.loads(request.body)
-    
-#     user_filters = {
-#         'job_title': data.get('job_title', []),
-#         'technologies': data.get('technologies', []),
-#     }
-
-#     # Step 3: Retrieve the score filter from the query parameters (e.g., min_score=90)
-#     min_score = int(request.GET.get('min_score', 0))  # Default to 0 if no min_score is provided
-
-#     # Step 4: Apply matching logic and filter profiles by match_score
-#     filtered_profiles = []
-#     for profile in records:
-#         match_score = calculate_match_score(profile, user_filters)
-#         if match_score >= min_score:
-#             # Store both the profile and the score together
-#             profile_with_score = {
-#                 'profile': model_to_dict(profile),  # Convert profile to a dictionary
-#                 'match_score': match_score  # Include the match score
-#             }
-#             filtered_profiles.append(profile_with_score)
-
-#     filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
-
-#     # Step 5: Paginate the filtered profiles
-#     paginator = Paginator(filtered_profiles, 20)  # Paginate filtered results (20 profiles per page)
-#     page_number = request.GET.get('page', 1)
-#     page_obj = paginator.get_page(page_number)
-    
-#     # Step 6: Extract the list of profiles with scores for the current page
-#     paginated_profiles = list(page_obj.object_list)  # No need for `.values()`, already dicts
-
-#     # Step 7: Return the filtered and paginated profiles as JSON
-#     return JsonResponse({
-#         'filtered_profiles': paginated_profiles,
-#         'pagination': {
-#             'current_page': page_obj.number,
-#             'total_pages': paginator.num_pages,
-#             'has_next': page_obj.has_next(),
-#             'has_previous': page_obj.has_previous(),
-#         }
-#     })
-
 @csrf_exempt
 def save_need_filters(request):
     if request.method == "POST":
@@ -1511,65 +1561,83 @@ def save_need_filters(request):
             data = json.loads(request.body)
             
             # Retrieve data from the request
-            user = data.get('user')
-            name = data.get('name')
+            user = data.get('current_user_id')
+            name = data.get('need')
 
             # For fields that expect a list, convert them into comma-separated strings
-            job_title = ', '.join(data.get('job_title', [])) if isinstance(data.get('job_title'), list) else ''
-            location = ', '.join(data.get('location', [])) if isinstance(data.get('location'), list) else ''
+            job_title = ', '.join(data.get('job_titles', [])) if isinstance(data.get('job_titles'), list) else ''
+            location = ', '.join(data.get('locations', [])) if isinstance(data.get('locations'), list) else ''
             skills = ', '.join(data.get('skills', [])) if isinstance(data.get('skills'), list) else ''
-            current_company = ', '.join(data.get('current_company', [])) if isinstance(data.get('current_company'), list) else '' 
-            head_count = ', '.join(data.get('head_count', [])) if isinstance(data.get('head_count'), list) else ''
+            companies = ', '.join(data.get('company_names', [])) if isinstance(data.get('company_name'), list) else '' 
+            head_count = ', '.join(data.get('company_size_range', [])) if isinstance(data.get('company_size_range'), list) else ''
             start_date = data.get('start_date')
-            end_date = data.get('end_date')
+            end_date = data.get('end_date', None)
 
             # Convert start_date and end_date to datetime objects if needed
-            start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
-            end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S')
+            # start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
+            # end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S') if end_date else None
 
             # Create a new Need instance and save it to the database
             need = Need.objects.create(
                 user=user,
                 name=name,
-                job_title=job_title, 
-                location=location,   
-                skills=skills,        
-                current_company=current_company,
-                head_count=head_count, 
+                job_title=job_title,
+                location=location,
+                skills=skills,
+                current_company=companies,
+                head_count=head_count,
                 start_date=start_date,
                 end_date=end_date
             )
             
             # Return a success response
-            return JsonResponse({
-                'message': 'Need filter saved successfully',
-                'need_id': need.id
-            }, status=201)
+            return JsonResponse({'success': True, 'message': 'Need filter saved successfully', 'need_id': need.id}, status=201)
 
-        except (ValueError, KeyError) as e:
-            return JsonResponse({'error': str(e)}, status=400)
+        except (ValueError, KeyError, Exception) as e:
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
     else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
     
-def get_needs(request):
-    if request.method == "GET":
+
+@csrf_exempt
+def get_needs(request, pk):
+    context = {}
+    if request.method == "POST":
         try:
-            # Retrieve all Need records from the database
-            needs = Need.objects.all().order_by('-created_at')
+            data = json.loads(request.body)
+            page_number = data.get('page', 1)
+            
+            needs = Need.objects.filter(user=pk).order_by('-created_at')
+
+            records_per_page = 10
+            paginator = Paginator(needs, records_per_page)
+            page_obj = paginator.get_page(page_number)
+            context['current_page'] = page_obj.number
+            context['total_pages'] = paginator.num_pages
+            context['has_next'] = page_obj.has_next()
+            context['has_previous'] = page_obj.has_previous()
+            total_records = paginator.count
+            
+            context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
+            context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
+            context['success'] = True
+            context['records_count'] = total_records
+            context['records'] = list(page_obj.object_list.values())
+            return JsonResponse(context, status=200)
 
             # Convert each Need instance into a dictionary and split comma-separated fields into lists
-            needs_data = []
-            for need in needs:
-                need_dict = model_to_dict(need)  # Convert model instance to dict
+            # needs_data = []
+            # for need in needs:
+            #     need_dict = model_to_dict(need)  # Convert model instance to dict
                 
-                # Convert comma-separated strings back to lists for specific fields
-                need_dict['job_title'] = need.job_title.split(', ') if need.job_title else []
-                need_dict['location'] = need.location.split(', ') if need.location else []
-                need_dict['skills'] = need.skills.split(', ') if need.skills else []
-                need_dict['head_count'] = need.head_count.split(', ') if need.head_count else []
+            #     # Convert comma-separated strings back to lists for specific fields
+            #     need_dict['job_title'] = need.job_title.split(', ') if need.job_title else []
+            #     need_dict['location'] = need.location.split(', ') if need.location else []
+            #     need_dict['skills'] = need.skills.split(', ') if need.skills else []
+            #     need_dict['head_count'] = need.head_count.split(', ') if need.head_count else []
 
-                needs_data.append(need_dict)
+            #     needs_data.append(need_dict)
 
             # Return the needs data as JSON
             return JsonResponse({
@@ -1577,24 +1645,32 @@ def get_needs(request):
             }, status=200)
 
         except Exception as e:
-            return JsonResponse({'error': str(e)}, status=500)
+            return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
     else:
-        return JsonResponse({'error': 'Invalid request method'}, status=405)
+        return JsonResponse({'success': False, 'message': 'Invalid request method'}, status=405)
+
 
 @csrf_exempt
-@require_http_methods(["DELETE"])
-def delete_need(request, need_id):
-    try:
-        need = Need.objects.get(id=need_id)
-        need.delete()
-        return JsonResponse({'message': 'Need deleted successfully'}, status=204)
-
-    except Need.DoesNotExist:
-        return JsonResponse({'error': 'Need not found'}, status=404)
-
-    except Exception as e:
-        return JsonResponse({'error': str(e)}, status=500)
+# @require_http_methods(["DELETE"])
+def delete_need(request, pk, need_id):
+    if request.method == "DELETE":
+        print(pk, type(pk))
+        print(need_id, type(need_id))
+        try:
+            try:
+                need = Need.objects.get(user=pk, id=int(need_id))
+            except Exception as e:
+                need = None
+            if need is None:
+                return JsonResponse({'success': False, 'message': 'Need not found'}, status=404)
+            need.delete()
+            return JsonResponse({'success': True, 'message': 'Need deleted'}, status=204)
+        except Exception as e:
+            print(e)
+            return JsonResponse({'success': False, 'message': f'Something bad happened {e}'}, status=500)
+        
+    return JsonResponse({'success': False, 'message': 'Invalid request'}, status=405)
 
 
 class ArrayToString(Func):

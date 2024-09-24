@@ -335,7 +335,7 @@ class Need(models.Model):
     current_company = models.TextField(null=True, blank=True)
     head_count = models.TextField(null=True, blank=True)
     start_date = models.DateTimeField()
-    end_date = models.DateTimeField()
+    end_date = models.DateTimeField(null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 

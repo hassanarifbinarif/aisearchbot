@@ -39,8 +39,8 @@ urlpatterns = [
     # needs
     # path('search-needs-matching-profile/', views.search_needs_profiles, name='search_needs_matching_profile'),
     path('save-need/', views.save_need_filters, name='save_need'),
-    path('get-needs/', views.get_needs, name='get_needs'),
-    path('delete-need/<int:need_id>', views.delete_need, name='delete_need'),
+    path('get-needs/<int:pk>/', views.get_needs, name='get_needs'),
+    path('delete-need/<int:pk>/<int:need_id>/', views.delete_need, name='delete_need'),
     path('search-profile-with-needs/', views.search_profile_with_needs, name='search_profile_with_needs'),
 
     path('toggle-visibility/', views.toggle_visibility, name='toggle_visibility'),
