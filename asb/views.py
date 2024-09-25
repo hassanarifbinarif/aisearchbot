@@ -1568,7 +1568,7 @@ def save_need_filters(request):
             job_title = ', '.join(data.get('job_titles', [])) if isinstance(data.get('job_titles'), list) else ''
             location = ', '.join(data.get('locations', [])) if isinstance(data.get('locations'), list) else ''
             skills = ', '.join(data.get('skills', [])) if isinstance(data.get('skills'), list) else ''
-            companies = ', '.join(data.get('company_names', [])) if isinstance(data.get('company_name'), list) else '' 
+            companies = ', '.join(data.get('company_names', [])) if isinstance(data.get('company_names'), list) else '' 
             head_count = ', '.join(data.get('company_size_range', [])) if isinstance(data.get('company_size_range'), list) else ''
             start_date = data.get('start_date')
             end_date = data.get('end_date', None)
@@ -1610,7 +1610,7 @@ def get_needs(request, pk):
             
             needs = Need.objects.filter(user=pk).order_by('-created_at')
 
-            records_per_page = 10
+            records_per_page = 20
             paginator = Paginator(needs, records_per_page)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
@@ -1625,25 +1625,6 @@ def get_needs(request, pk):
             context['records_count'] = total_records
             context['records'] = list(page_obj.object_list.values())
             return JsonResponse(context, status=200)
-
-            # Convert each Need instance into a dictionary and split comma-separated fields into lists
-            # needs_data = []
-            # for need in needs:
-            #     need_dict = model_to_dict(need)  # Convert model instance to dict
-                
-            #     # Convert comma-separated strings back to lists for specific fields
-            #     need_dict['job_title'] = need.job_title.split(', ') if need.job_title else []
-            #     need_dict['location'] = need.location.split(', ') if need.location else []
-            #     need_dict['skills'] = need.skills.split(', ') if need.skills else []
-            #     need_dict['head_count'] = need.head_count.split(', ') if need.head_count else []
-
-            #     needs_data.append(need_dict)
-
-            # Return the needs data as JSON
-            return JsonResponse({
-                'needs': needs_data,
-            }, status=200)
-
         except Exception as e:
             return JsonResponse({'success': False, 'message': str(e)}, status=500)
 
