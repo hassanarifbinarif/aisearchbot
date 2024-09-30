@@ -28,6 +28,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.db.models.functions import Lower
 from operator import or_
 from django.forms.models import model_to_dict
+from django.core import serializers
 
 # authentication views
 def super_admin_login(request):
@@ -1009,45 +1010,6 @@ def search_profile(request):
                 priority_4 = records.filter(s_queries).annotate(priority=Value(5, output_field=IntegerField()))
             else:
                 priority_4 = records.annotate(priority=Value(999999, output_field=IntegerField()))
-                # priority_4 = records.filter(j_s_queries).annotate(priority=Value(5, output_field=IntegerField()))
-
-            # # For priority 3
-            # if keywords != '':
-            #     priority_4 = priority_4.annotate(
-            #         priority=Case(
-            #             When(key_q & combined_keyword_query, then=Value(4)),
-            #             output_field=IntegerField(),
-            #         )
-            #     )
-            #     # priority_4 = priority_4.filter(key_q & combined_keyword_query).annotate(priority=Value(3, output_field=IntegerField()))
-            # else:
-            #     if combined_keyword_query != Q():
-            #         priority_4 = priority_4.annotate(
-            #             priority=Case(
-            #                 When(combined_keyword_query, then=Value(4)),
-            #                 output_field=IntegerField(),
-            #             )
-            #         )
-
-            # # For priority 2
-            # if len(skills) == 0:
-            #     if keywords != '':
-            #         priority_4 = priority_4.annotate(
-            #             priority=Case(
-            #                 When(Q(headline__icontains=keywords) | Q(current_position__icontains=keywords) | Q(person_skills__icontains=keywords), then=Value(3)),
-            #                 output_field=IntegerField(),
-            #             )
-            #         )
-            # else:
-            #     priority_2_conditions = priority_4.model.objects.case_insensitive_skills_search(skills)
-            #     priority_4 = priority_4.annotate(
-            #         priority=Case(
-            #             When(priority_2_conditions, then=Value(3)),
-            #             output_field=IntegerField(),
-            #         )
-            #     )
-            #     # priority_2 = priority_4.case_insensitive_skills_search(skills)
-
 
             ab = priority_4
             bool_search = priority_4
@@ -1055,10 +1017,8 @@ def search_profile(request):
             if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 ab = keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
             
-            # if ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == True:
             if use_advanced_search == True:
                 bool_search = boolean_keyword_with_job_title_or_skill(priority_4, keywords, job_titles, skills)
-
 
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
                 keyword_lower = keywords.lower()
@@ -1089,29 +1049,7 @@ def search_profile(request):
                             When(key_q, then=Value(1)),
                             output_field=IntegerField(),
                         )
-                    )
-
-            # Apply job title filter
-            # if len(job_titles) == 0:
-            #     if keywords != '':
-            #         priority_4 = priority_4.annotate(
-            #             priority=Case(
-            #                 When(key_q, then=Value(1)),
-            #                 output_field=IntegerField(),
-            #             )
-            #         )
-            # else:
-            #     job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
-            #     priority_4 = priority_4.annotate(
-            #         priority=Case(
-            #             When(key_q & job_title_queries, then=Value(1)),
-            #             output_field=IntegerField(),
-            #         )
-            #     )
-            
-            # if keywords != '' and use_advanced_search == False and (len(job_titles) > 0 or len(skills) > 0):
-            #     priority_4 = keyword_with_job_title_or_skill(priority_4)
-            
+                    )            
             
             if keywords == '' and use_advanced_search == False and len(job_titles) > 0 and len(skills) == 0:
                 job_title_queries = build_keyword_query(job_titles, ['headline', 'current_position'])
@@ -1144,7 +1082,6 @@ def search_profile(request):
             if keywords == '' and use_advanced_search == False and len(job_titles) == 0 and len(skills) > 0:
                 max_length = priority_4.aggregate(max_length=Max(ArrayLength(F('person_skills'))))['max_length'] or 0
                 priority_4 = search_skills(skills, priority_4)
-
             
             if keywords != '' and len(job_titles) == 0 and use_advanced_search == False and len(skills) == 0:
                 combined_records = priority_4.order_by('priority', 'skill_index', '-id')
@@ -1159,7 +1096,6 @@ def search_profile(request):
                 combined_records = priority_4
             elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == False:
                 combined_records = ab
-            # elif ((keywords != '' and len(job_titles) > 0) or (keywords != '' and len(skills) > 0) or (len(job_titles) > 0 and len(skills) > 0)) and use_advanced_search == True:
             elif use_advanced_search == True:
                 combined_records = bool_search
             else:
@@ -2274,8 +2210,11 @@ def add_list(request):
             elif user_id == None:
                 return JsonResponse({'success': False, 'message': 'User id is required'}, status=400)
             else:
-                SavedLists.objects.create(list_user_id=user_id, name=list_name, list_type=list_type)
-            return JsonResponse({'success': True, 'message': 'List created'}, status=201)
+                new_list = SavedLists.objects.create(list_user_id=user_id, name=list_name, list_type=list_type)
+                new_list_json = serializers.serialize('json', [new_list])
+                new_list_data = json.loads(new_list_json)[0]['fields']
+                new_list_data['id'] = new_list.id
+            return JsonResponse({'success': True, 'message': 'List created', 'data': new_list_data}, status=201)
         except Exception as e:
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
