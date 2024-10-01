@@ -1397,7 +1397,7 @@ def filter_by_contact_details(records, contact_keyword):
     field_mapping = {
         'email': ['email1', 'email2'],
         'phone': ['phone1', 'phone2'],
-        'phone_email': ['email1', 'email2', 'phone1', 'phone2']
+        'phone_or_email': ['email1', 'email2', 'phone1', 'phone2']
     }
 
     # Get the fields corresponding to the contact keyword
@@ -1508,10 +1508,8 @@ def save_need_filters(request):
             head_count = ', '.join(data.get('company_size_range', [])) if isinstance(data.get('company_size_range'), list) else ''
             start_date = data.get('start_date')
             end_date = data.get('end_date', None)
-
-            # Convert start_date and end_date to datetime objects if needed
-            # start_date = timezone.datetime.strptime(start_date, '%Y-%m-%d %H:%M:%S')
-            # end_date = timezone.datetime.strptime(end_date, '%Y-%m-%d %H:%M:%S') if end_date else None
+            percentage_filter = data.get('min_score', None)
+            contact_type = data.get('contact_details', None)
 
             # Create a new Need instance and save it to the database
             need = Need.objects.create(
@@ -1523,7 +1521,9 @@ def save_need_filters(request):
                 current_company=companies,
                 head_count=head_count,
                 start_date=start_date,
-                end_date=end_date
+                end_date=end_date,
+                percentage_filter=percentage_filter,
+                contact_type=contact_type
             )
             
             # Return a success response

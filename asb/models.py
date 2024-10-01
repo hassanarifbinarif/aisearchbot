@@ -327,6 +327,11 @@ class SharedProfiles(models.Model):
 
 
 class Need(models.Model):
+    class Types(models.TextChoices):
+        PHONE = 'phone', _('phone')
+        EMAIL = 'email', _('email')
+        PHONE_OR_EMAIL = 'phone_or_email', _('phone or email')
+
     user = models.IntegerField()
     name = models.CharField(max_length=128)
     job_title = models.TextField(null=True, blank=True)
@@ -336,6 +341,8 @@ class Need(models.Model):
     head_count = models.TextField(null=True, blank=True)
     start_date = models.DateTimeField()
     end_date = models.DateTimeField(null=True)
+    percentage_filter = models.IntegerField(null=True)
+    contact_type = models.CharField(max_length=100, choices=Types.choices, null=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 
