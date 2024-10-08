@@ -1385,7 +1385,8 @@ def filter_by_company_size(records, company_size_ranges):
             if size_to is None:
                 company_size_query |= Q(company_size_from__gte=size_from)
             else:
-                company_size_query |= Q(company_size_from__range=(size_from, size_to))
+                company_size_query |= Q(company_size_from__gte=size_from, company_size_to__lte=size_to)
+                # company_size_query |= Q(company_size_from__range=(size_from, size_to))
         valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
         records = records.filter(company_size_query & valid_data_query)
     
