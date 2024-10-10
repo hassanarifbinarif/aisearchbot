@@ -589,7 +589,8 @@ def get_candidate_data(request, params):
         'Email1': 'Email Perso',
         'Email2': 'Email Pro',
         'Phone1': 'Landline',
-        'Phone2': 'Cell Phone'
+        'Phone2': 'Cell Phone',
+        'Person state': 'Person Region'
     }
     formatted_field_names = [
         replacements.get(field, field) for field in formatted_field_names
@@ -641,7 +642,8 @@ def get_duplicate_data(request, params):
         'Email1': 'Email Perso',
         'Email2': 'Email Pro',
         'Phone1': 'Landline',
-        'Phone2': 'Cell Phone'
+        'Phone2': 'Cell Phone',
+        'Person state': 'Person Region'
     }
     formatted_field_names = [
         replacements.get(field, field) for field in formatted_field_names
