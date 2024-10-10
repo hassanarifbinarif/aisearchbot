@@ -2742,9 +2742,14 @@ def get_shared_to_list(request):
                 records = records.filter(created_at__gte=start_date)
             if end_date:
                 records = records.filter(created_at__lte=end_date)
-            
-            if city:
+
+            if city and state:
+                records = records.filter(Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=state))
+            elif city:
                 records = records.filter(Q(profile__person_city__icontains=city))
+            elif state:
+                records = records.filter(Q(profile__person_city__icontains=state))
+            
             if region:
                 records = records.filter(Q(profile__person_state__icontains=region))
             # if country:
@@ -2823,7 +2828,6 @@ def get_shared_to_list(request):
             context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
             context['success'] = True
             context['records_count'] = total_records
-            # context['records'] = list(page_obj.object_list.values())
             return JsonResponse(context, status=200)
         except Exception as e:
             print(e)
@@ -2865,8 +2869,13 @@ def get_shared_from_list(request):
             if end_date:
                 records = records.filter(created_at__lte=end_date)
             
-            if city:
+            if city and state:
+                records = records.filter(Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=state))
+            elif city:
                 records = records.filter(Q(profile__person_city__icontains=city))
+            elif state:
+                records = records.filter(Q(profile__person_city__icontains=state))
+            
             if region:
                 records = records.filter(Q(profile__person_state__icontains=region))
             # if country:
@@ -3099,8 +3108,13 @@ def get_activities_list(request):
             if end_date:
                 records = records.filter(created_at__lte=end_date)
             
-            if city:
+            if city and state:
+                records = records.filter(Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=state))
+            elif city:
                 records = records.filter(Q(profile__person_city__icontains=city))
+            elif state:
+                records = records.filter(Q(profile__person_city__icontains=state))
+            
             if region:
                 records = records.filter(Q(profile__person_state__icontains=region))
             # if country:
