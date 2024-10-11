@@ -3138,9 +3138,9 @@ def get_activities_list(request):
             if len(activity_user_ids) > 0:
                 records = records.filter(action_user_id__in=activity_user_ids)
             if start_date:
-                records = records.filter(created_at__gte=start_date)
+                records = records.filter(action_datetime__gte=start_date)
             if end_date:
-                records = records.filter(created_at__lte=end_date)
+                records = records.filter(action_datetime__lte=end_date)
             
             normalized_city_string = city.replace('-', ' ')
             hyphenated_city_string = city.replace(' ', '-')
@@ -3188,6 +3188,7 @@ def get_activities_list(request):
                     'id': record.id,
                     'action_type': record.get_action_type_display(),
                     'created_by': record.action_user_id,
+                    'action_datetime': record.action_datetime,
                     'created_at': record.created_at,
                     'updated_at': record.updated_at,
                     'profile': {
