@@ -2756,20 +2756,19 @@ def get_shared_to_list(request):
 
             if city and state:
                 records = records.filter(
-                    Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=normalized_city_string) |
-                    Q(profile__person_city__icontains=hyphenated_city_string) | Q(profile__person_city__icontains=state) |
-                    Q(profile__person_city__icontains=normalized_state_string) | Q(profile__person_city__icontains=hyphenated_state_string)
+                    Q(profile__person_city__unaccent__icontains=city) | Q(profile__person_city__unaccent__icontains=normalized_city_string) |
+                    Q(profile__person_city__unaccent__icontains=hyphenated_city_string) | Q(profile__person_city__unaccent__icontains=state) |
+                    Q(profile__person_city__unaccent__icontains=normalized_state_string) | Q(profile__person_city__unaccent__icontains=hyphenated_state_string)
                 )
             elif city:
-                records = records.filter(Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=normalized_city_string) |
-                                         Q(profile__person_city__icontains=hyphenated_city_string))
+                records = records.filter(Q(profile__person_city__unaccent__icontains=city) | Q(profile__person_city__unaccent__icontains=normalized_city_string) |
+                                         Q(profile__person_city__unaccent__icontains=hyphenated_city_string))
             elif state:
-                records = records.filter(Q(profile__person_city__icontains=state) | Q(profile__person_city__icontains=normalized_state_string) |
-                                         Q(profile__person_city__icontains=hyphenated_state_string))
-            
+                records = records.filter(Q(profile__person_city__unaccent__icontains=state) | Q(profile__person_city__unaccent__icontains=normalized_state_string) |
+                                         Q(profile__person_city__unaccent__icontains=hyphenated_state_string))
             if region:
-                records = records.filter(Q(profile__person_state__icontains=region) | Q(profile__person_state__icontains=normalized_region_string) |
-                                         Q(profile__person_state__icontains=hyphenated_region_string))
+                records = records.filter(Q(profile__person_state__unaccent__icontains=region) | Q(profile__person_state__unaccent__icontains=normalized_region_string) |
+                                         Q(profile__person_state__unaccent__icontains=hyphenated_region_string))
             # if country:
             #     records = records.filter(Q(profile__person_country__icontains=country))
 
@@ -2898,20 +2897,19 @@ def get_shared_from_list(request):
             
             if city and state:
                 records = records.filter(
-                    Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=normalized_city_string) |
-                    Q(profile__person_city__icontains=hyphenated_city_string) | Q(profile__person_city__icontains=state) |
-                    Q(profile__person_city__icontains=normalized_state_string) | Q(profile__person_city__icontains=hyphenated_state_string)
+                    Q(profile__person_city__unaccent__icontains=city) | Q(profile__person_city__unaccent__icontains=normalized_city_string) |
+                    Q(profile__person_city__unaccent__icontains=hyphenated_city_string) | Q(profile__person_city__unaccent__icontains=state) |
+                    Q(profile__person_city__unaccent__icontains=normalized_state_string) | Q(profile__person_city__unaccent__icontains=hyphenated_state_string)
                 )
             elif city:
-                records = records.filter(Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=normalized_city_string) |
-                                         Q(profile__person_city__icontains=hyphenated_city_string))
+                records = records.filter(Q(profile__person_city__unaccent__icontains=city) | Q(profile__person_city__unaccent__icontains=normalized_city_string) |
+                                         Q(profile__person_city__unaccent__icontains=hyphenated_city_string))
             elif state:
-                records = records.filter(Q(profile__person_city__icontains=state) | Q(profile__person_city__icontains=normalized_state_string) |
-                                         Q(profile__person_city__icontains=hyphenated_state_string))
-            
+                records = records.filter(Q(profile__person_city__unaccent__icontains=state) | Q(profile__person_city__unaccent__icontains=normalized_state_string) |
+                                         Q(profile__person_city__unaccent__icontains=hyphenated_state_string))
             if region:
-                records = records.filter(Q(profile__person_state__icontains=region) | Q(profile__person_state__icontains=normalized_region_string) |
-                                         Q(profile__person_state__icontains=hyphenated_region_string))
+                records = records.filter(Q(profile__person_state__unaccent__icontains=region) | Q(profile__person_state__unaccent__icontains=normalized_region_string) |
+                                         Q(profile__person_state__unaccent__icontains=hyphenated_region_string))
             # if country:
             #     records = records.filter(Q(profile__person_country__icontains=country))
 
@@ -3153,19 +3151,19 @@ def get_activities_list(request):
             
             if city and state:
                 records = records.filter(
-                    Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=normalized_city_string) |
-                    Q(profile__person_city__icontains=hyphenated_city_string) | Q(profile__person_city__icontains=state) |
-                    Q(profile__person_city__icontains=normalized_state_string) | Q(profile__person_city__icontains=hyphenated_state_string)
+                    Q(profile__person_city__unaccent__icontains=city) | Q(profile__person_city__unaccent__icontains=normalized_city_string) |
+                    Q(profile__person_city__unaccent__icontains=hyphenated_city_string) | Q(profile__person_city__unaccent__icontains=state) |
+                    Q(profile__person_city__unaccent__icontains=normalized_state_string) | Q(profile__person_city__unaccent__icontains=hyphenated_state_string)
                 )
             elif city:
-                records = records.filter(Q(profile__person_city__icontains=city) | Q(profile__person_city__icontains=normalized_city_string) |
-                                         Q(profile__person_city__icontains=hyphenated_city_string))
+                records = records.filter(Q(profile__person_city__unaccent__icontains=city) | Q(profile__person_city__unaccent__icontains=normalized_city_string) |
+                                         Q(profile__person_city__unaccent__icontains=hyphenated_city_string))
             elif state:
-                records = records.filter(Q(profile__person_city__icontains=state) | Q(profile__person_city__icontains=normalized_state_string) |
-                                         Q(profile__person_city__icontains=hyphenated_state_string))
+                records = records.filter(Q(profile__person_city__unaccent__icontains=state) | Q(profile__person_city__unaccent__icontains=normalized_state_string) |
+                                         Q(profile__person_city__unaccent__icontains=hyphenated_state_string))
             if region:
-                records = records.filter(Q(profile__person_state__icontains=region) | Q(profile__person_state__icontains=normalized_region_string) |
-                                         Q(profile__person_state__icontains=hyphenated_region_string))
+                records = records.filter(Q(profile__person_state__unaccent__icontains=region) | Q(profile__person_state__unaccent__icontains=normalized_region_string) |
+                                         Q(profile__person_state__unaccent__icontains=hyphenated_region_string))
             # if country:
             #     records = records.filter(Q(profile__person_country__icontains=country))
 

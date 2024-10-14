@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'asb',
     
     'corsheaders',
+    'django.contrib.postgres'
 ]
 
 MIDDLEWARE = [
