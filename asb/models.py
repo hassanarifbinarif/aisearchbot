@@ -305,6 +305,7 @@ class Actions(models.Model):
         EMAIL = 'email', _('email')
         NOTE = 'note', _('note')
         CONVERT = 'convert', _('convert')
+        OPENED_PROFILE = 'opened_profile', _('opened profile')
     
     action_type = models.CharField(max_length=100, choices=Types.choices, null=True)
     parent_user_id = models.IntegerField()

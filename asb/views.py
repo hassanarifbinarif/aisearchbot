@@ -1,9 +1,9 @@
 import json
 import os
 import operator
-import time
 import re
 import pandas as pd
+from datetime import datetime
 from django.template import loader
 from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
@@ -1838,18 +1838,33 @@ def boolean_search(query, fields):
 def toggle_visibility(request):
     if request.method == "POST":
         try:
+            action_data = None
             data = json.loads(request.body)
             user_id = data.get('user', None)
+            action_user_id = data.get('current_user_id', None)
             record_id = data.get('record_id', None)            
             
             update_fields = {}
             fields = ['show_email1', 'show_email2', 'show_phone1', 'show_phone2', 'is_favourite']
+            open_profile_fields = ['show_email1', 'show_email2', 'show_phone1', 'show_phone2']
             for field in fields:
                 if field in data:
                     update_fields[field] = data[field]
-            # update_fields = {'show_email1': show_email1, 'show_email2': show_email2, 'show_phone1': show_phone1, 'show_phone2': show_phone2}
             new = ProfileVisibilityToggle.objects.update_or_create(search_user_id=user_id, candidate_id=record_id, defaults=update_fields)
-            return JsonResponse({'success': True, 'message': 'Visibility toggled successfully'}, status=200)
+            has_open_profile_field = any(field in data for field in open_profile_fields)
+            if has_open_profile_field:
+                action_datetime = datetime.now()
+                open_profile_action = Actions.objects.create(parent_user_id=user_id, action_user_id=action_user_id, profile_id=record_id, action_type=Actions.Types.OPENED_PROFILE, action_datetime=action_datetime)
+                action_data = {
+                    'action_type': open_profile_action.get_action_type_display(),
+                    'action_type_value': open_profile_action.action_type,
+                    'parent_user': open_profile_action.parent_user_id,
+                    'action_user': open_profile_action.action_user_id,
+                    'comment': open_profile_action.comment,
+                    'action_datetime': open_profile_action.action_datetime,
+                    'id': open_profile_action.id
+                }
+            return JsonResponse({'success': True, 'message': 'Visibility toggled successfully', 'action': action_data}, status=200)
         except Exception as e:
             print(e)
             return JsonResponse({'success': False, 'message': 'Something bad happened'}, status=500)
