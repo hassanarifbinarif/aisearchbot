@@ -1243,8 +1243,8 @@ def search_profile_with_needs(request):
                 }
                 filtered_profiles.append(profile_with_score)
 
-        # # Step 5: Sort profiles by match score in descending order
-        # filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
+        # Step 5: Sort profiles by match score in descending order
+        filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
 
         # Step 6: Paginate the results
         page_number = query_dict.get("page", 1)
