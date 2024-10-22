@@ -1853,8 +1853,17 @@ def toggle_visibility(request):
             new = ProfileVisibilityToggle.objects.update_or_create(search_user_id=user_id, candidate_id=record_id, defaults=update_fields)
             has_open_profile_field = any(field in data for field in open_profile_fields)
             if has_open_profile_field:
+                comment = None
+                if 'show_email1' in data:
+                    comment = 'email1'
+                if 'show_email2' in data:
+                    comment = 'email2'
+                if 'show_phone1' in data:
+                    comment = 'phone1'
+                if 'show_phone2' in data:
+                    comment = 'phone2'
                 action_datetime = datetime.now()
-                open_profile_action = Actions.objects.create(parent_user_id=user_id, action_user_id=action_user_id, profile_id=record_id, action_type=Actions.Types.OPENED_PROFILE, action_datetime=action_datetime)
+                open_profile_action = Actions.objects.create(parent_user_id=user_id, action_user_id=action_user_id, profile_id=record_id, action_type=Actions.Types.OPENED_PROFILE, action_datetime=action_datetime, comment=comment)
                 action_data = {
                     'action_type': open_profile_action.get_action_type_display(),
                     'action_type_value': open_profile_action.action_type,
