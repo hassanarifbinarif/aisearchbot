@@ -19,7 +19,7 @@ services:
     container_name: "${PROJECT_NAME}_postgres_${ENV}"
     image: postgis/postgis:14-3.3
     volumes:
-      - aisearchbot-postgres-data:/var/lib/postgres
+      - aisearchbot-postgres-data:/var/lib/postgresql/data
     environment:
       POSTGRES_DB: "${ASB_DB_NAME}"
       POSTGRES_USER: "${ASB_DB_USER}"
