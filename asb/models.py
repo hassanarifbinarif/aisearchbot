@@ -344,6 +344,7 @@ class Need(models.Model):
     end_date = models.DateTimeField(null=True)
     percentage_filter = models.IntegerField(null=True)
     contact_type = models.CharField(max_length=100, choices=Types.choices, null=True)
+    seniority_levels = models.CharField(max_length=128, null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True)
 

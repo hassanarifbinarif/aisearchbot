@@ -5,7 +5,7 @@ import re
 import pandas as pd
 from datetime import datetime
 from django.template import loader
-from django.db.models import Q, F, Value, IntegerField, Count, When, Case, Func, Max
+from django.db.models import Q, F, Value, IntegerField, FloatField, Count, When, Case, Func, Max, ExpressionWrapper
 from django.db.models.expressions import RawSQL, Subquery, OuterRef
 from functools import reduce
 from django.http import HttpResponse, JsonResponse
@@ -25,7 +25,7 @@ from .forms import UserChangeForm, CustomUserCreationForm
 from django.conf import settings
 from aisearchbot.decorators import super_admin_required
 from django.views.decorators.csrf import csrf_exempt
-from django.db.models.functions import Lower
+from django.db.models.functions import Lower, ExtractYear, Now, Cast, StrIndex, Substr, Least, Greatest
 from operator import or_
 from django.forms.models import model_to_dict
 from django.core import serializers
@@ -848,7 +848,8 @@ search_fields = [
     'company_size_to', 'current_position_2', 'current_company_2', 'previous_position_2',
     'previous_company_2', 'previous_position_3', 'previous_company_3', 'company_city',
     'company_state', 'company_country', 'person_angellist_url', 'person_crunchbase_url',
-    'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url', 'company_logo_url'
+    'person_twitter_url', 'person_facebook_url', 'company_linkedin_url', 'person_image_url',
+    'company_logo_url', 'years_of_experience'
 ]
 
 
@@ -876,6 +877,7 @@ def search_profile(request):
             company_size_to = query_dict.get('size_to', None)
             contact_name = query_dict.get('contact_name', '')
             job_skill_list = job_titles + skills
+            seniority_level_ranges = query_dict.get('seniority_level_ranges', [])
             
             use_advanced_search = is_advanced_search(keywords)
             if use_advanced_search:
@@ -974,6 +976,9 @@ def search_profile(request):
 
             # Apply contact name filter
             records = records.filter(Q(full_name__icontains=contact_name) | Q(first_name__icontains=contact_name) | Q(last_name__icontains=contact_name))
+
+            records = annotate_experience(records)
+            records = filter_by_seniority_level(seniority_level_ranges, records)
 
             # keyword_query = build_keyword_query(keywords, keyword_fields, use_advanced=use_advanced_search)
             if use_advanced_search:
@@ -1172,6 +1177,60 @@ def search_profile(request):
     return JsonResponse(context)
 
 
+class ExtractFirstYear(Func):
+    function = 'SUBSTRING'
+    template = (
+        """CAST(SUBSTRING(%(expressions)s FROM '(?:19|20)[0-9]{2}') AS INTEGER)"""
+    )
+    output_field = IntegerField()
+
+
+def annotate_experience(queryset):
+    """
+    Annotates queryset with years_of_experience based on given conditions
+    """
+    current_year = datetime.now().year
+    
+    adjusted_year_expr = ExtractFirstYear('education_experience') + Value(4)
+
+    return queryset.annotate(
+        earliest_year=ExtractFirstYear('education_experience') + Value(4),
+        years_of_experience=Case(
+            # If education year exists, calculate experience
+            When(
+                Q(earliest_year__isnull=False),
+                then=Case(
+                    # If (earliest_year + 4) is greater than current_year, return 0
+                    When(
+                        earliest_year__gt = Value(current_year),
+                        then=Value(0.0)
+                    ),
+                    # Otherwise do the normal calculation
+                    default=current_year - adjusted_year_expr,
+                    output_field=FloatField(),
+                )
+            ),
+            # If both previous companies exist, return 5.5
+            When(
+                Q(previous_company_2__isnull=False) & 
+                ~Q(previous_company_2='') &
+                Q(previous_company_3__isnull=False) & 
+                ~Q(previous_company_3=''),
+                then=Value(5.5)
+            ),
+            # If only previous_company_2 exists, return 3
+            When(
+                Q(previous_company_2__isnull=False) & 
+                ~Q(previous_company_2=''),
+                then=Value(3.0)
+            ),
+            # Default case
+            default=Value(1.5),
+            output_field=FloatField(),
+        )
+    )
+
+
 @csrf_exempt
 def search_profile_with_needs(request):
     if request.method != 'POST':
@@ -1188,6 +1247,7 @@ def search_profile_with_needs(request):
         company_size_ranges = query_dict.get('company_size_range', [])
         contact_details = query_dict.get('contact_details', '')
         min_score = query_dict.get('min_score', 0)
+        seniority_level_ranges = query_dict.get('seniority_level_ranges', [])
 
         # Define the filters for matching
         filters = {
@@ -1215,6 +1275,14 @@ def search_profile_with_needs(request):
 
         if contact_details:
             records = filter_by_contact_details(records, contact_details)
+        
+        records = annotate_experience(records)
+        records = filter_by_seniority_level(seniority_level_ranges, records)
+
+        # index = 0
+        # while index < 20:
+        #     print(records[index].earliest_year, records[index].years_of_experience)
+        #     index = index + 1
 
         # # Filter by keywords, job titles, and skills
         # records = filter_by_keywords(records, keywords, job_titles, skills)
@@ -1239,6 +1307,7 @@ def search_profile_with_needs(request):
             if match_score >= min_score:  # Optionally, apply a minimum score filter
                 profile_with_score = {
                     'profile': model_to_dict(profile),  # Convert profile to a dictionary
+                    'years_of_experience': profile.years_of_experience,
                     'match_score': match_score  # Include the match score
                 }
                 filtered_profiles.append(profile_with_score)
@@ -1316,7 +1385,8 @@ def search_profile_with_needs(request):
                 'company_linkedin_url': item['profile']['company_linkedin_url'],
                 'person_image_url': item['profile']['person_image_url'],
                 'company_logo_url': item['profile']['company_logo_url'],
-                'match_score': item['match_score']
+                'match_score': item['match_score'],
+                'years_of_experience': item['years_of_experience']
             }
             candidate_dict['actions'] = actions_mapping.get(item['profile']['id'], [])
             candidate_dict['show_email1'] = visibility_toggle.show_email1 if visibility_toggle else False
@@ -1436,6 +1506,29 @@ def filter_by_keywords(records, keywords, job_titles, skills):
     return records.filter(keyword_query | combined_keyword_query)
 
 
+def filter_by_seniority_level(seniority_level_ranges, records):
+    if len(seniority_level_ranges) > 0:
+        seniority_level_query = Q()
+        for size_range in seniority_level_ranges:
+            size_from = size_range.get('from')
+            size_to = size_range.get('to')
+            try:
+                size_from = float(size_from)
+            except (ValueError, TypeError):
+                continue
+            try:
+                size_to = float(size_to)
+            except (ValueError, TypeError):
+                size_to = None
+            if size_to is None:
+                seniority_level_query |= Q(years_of_experience__gte=size_from)
+            else:
+                seniority_level_query |= Q(years_of_experience__gte=size_from, years_of_experience__lte=size_to)
+        valid_data_query = Q(company_size_to__isnull=True) | Q(company_size_from__lte=F('company_size_to'))
+        records = records.filter(seniority_level_query & valid_data_query)
+    return records        
+
+
 def generate_location_variants(locations):
     normalized = [loc.replace('-', ' ') for loc in locations]
     hyphenated = [loc.replace(' ', '-') for loc in locations]
@@ -1513,6 +1606,7 @@ def save_need_filters(request):
             end_date = data.get('end_date', None)
             percentage_filter = data.get('min_score', None)
             contact_type = data.get('contact_details', None)
+            seniority_levels = ', '.join(data.get('seniority_levels', [])) if isinstance(data.get('seniority_levels'), list) else ''
 
             # Create a new Need instance and save it to the database
             need = Need.objects.create(
@@ -1526,7 +1620,8 @@ def save_need_filters(request):
                 start_date=start_date,
                 end_date=end_date,
                 percentage_filter=percentage_filter,
-                contact_type=contact_type
+                contact_type=contact_type,
+                seniority_levels=seniority_levels
             )
             
             # Return a success response
