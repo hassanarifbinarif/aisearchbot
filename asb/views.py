@@ -1303,12 +1303,14 @@ def search_profile_with_needs(request):
         # Step 4: Apply matching logic and filter profiles by match_score
         filtered_profiles = []
         for profile in records:
-            match_score = calculate_match_score(profile, filters)
+            # print(profile.full_name)
+            match_score = calculate_match_percentage(profile, job_titles, skills)
+            # match_score = calculate_match_score(profile, filters)
             if match_score >= min_score:  # Optionally, apply a minimum score filter
                 profile_with_score = {
                     'profile': model_to_dict(profile),  # Convert profile to a dictionary
                     'years_of_experience': profile.years_of_experience,
-                    'match_score': match_score  # Include the match score
+                    'match_score': match_score,
                 }
                 filtered_profiles.append(profile_with_score)
 
@@ -1414,7 +1416,66 @@ def search_profile_with_needs(request):
         return JsonResponse({"success": False, "message": "Invalid JSON data."}, status=400)
     except Exception as e:
         return JsonResponse({"success": False, "message": str(e)}, status=500)
-    
+
+
+def calculate_match_percentage(profile, job_title_keywords, skills):
+    try:
+        match_count = 0
+        total_percentage = 0
+        headline = profile.headline or ''
+        current_position = profile.current_position or ''
+        person_skills = profile.person_skills or []
+
+        for keyword in job_title_keywords:
+            pattern = build_regex_pattern(keyword)
+            if re.search(pattern, headline) or re.search(pattern, current_position):
+                match_count += 1
+
+        if match_count == 1:
+            total_percentage += 30
+        elif match_count == 2:
+            total_percentage += 35
+        elif match_count >= 3:
+            total_percentage += 40
+
+        skills_match_found = any(
+            re.search(build_regex_pattern(skill), headline) or re.search(build_regex_pattern(skill), current_position)
+            for skill in skills
+        )
+        if skills_match_found:
+            total_percentage += 25
+
+        match_found_in_skills = False
+        if person_skills:
+             for index, person_skill in enumerate(person_skills):
+                for skill in skills:
+                    pattern = build_regex_pattern(skill)
+                    if re.search(pattern, person_skill):
+                        if index == 0:
+                            total_percentage += 15
+                        elif index == 1:
+                            total_percentage += 10
+                        elif index == 2:
+                            total_percentage += 5
+                        else:
+                            total_percentage += 5
+                        match_found_in_skills = True
+                        break  # Stop after the first match for this position
+        
+        # Calculate percentage based on skills and job_title filter presence
+        if match_count > 0 and (skills is None or len(skills) == 0):
+            total_percentage += 56
+        elif match_found_in_skills == True and (job_title_keywords is None or len(job_title_keywords) == 0):
+            total_percentage += 66
+        else:
+            total_percentage += 48
+
+        # return total_percentage
+        return min(total_percentage, 100)
+    except Exception as e:
+        print(e)
+        return 0
+
 
 def filter_by_location(records, location):
     location = [loc.lower() for loc in location if loc.lower() != 'france']
