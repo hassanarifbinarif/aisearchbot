@@ -1145,6 +1145,7 @@ def search_profile(request):
                 item['is_opened'] = False
                 item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
                 item['actions'] = actions_mapping.get(item['id'], [])
+                item['match_score'] = calculate_match_percentage(item, job_titles, skills, keywords)
                 try:
                     profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
                     item['show_email1'] = profile_visibility.show_email1
@@ -1418,24 +1419,37 @@ def search_profile_with_needs(request):
         return JsonResponse({"success": False, "message": str(e)}, status=500)
 
 
-def calculate_match_percentage(profile, job_title_keywords, skills):
+def get_value(source, attr, default=''):
+    if isinstance(source, dict):
+        return source.get(attr, default)
+    return getattr(source, attr, default)
+
+
+def calculate_match_percentage(profile, job_title_keywords, skills, master_keyword=None):
     try:
-        match_count = 0
+        job_title_match_count = 0
         total_percentage = 0
-        headline = profile.headline or ''
-        current_position = profile.current_position or ''
-        person_skills = profile.person_skills or []
+        headline = get_value(profile, 'headline', '')
+        current_position = get_value(profile, 'current_position', '')
+        person_skills = get_value(profile, 'person_skills', [])
+
+        match_found_in_keyword = False
+        if master_keyword:
+            keyword_pattern = build_regex_pattern(master_keyword)
+            if re.search(keyword_pattern, headline) or re.search(keyword_pattern, current_position):
+                total_percentage += 50
+                match_found_in_keyword = True
 
         for keyword in job_title_keywords:
             pattern = build_regex_pattern(keyword)
             if re.search(pattern, headline) or re.search(pattern, current_position):
-                match_count += 1
+                job_title_match_count += 1
 
-        if match_count == 1:
+        if job_title_match_count == 1:
             total_percentage += 30
-        elif match_count == 2:
+        elif job_title_match_count == 2:
             total_percentage += 35
-        elif match_count >= 3:
+        elif job_title_match_count >= 3:
             total_percentage += 40
 
         skills_match_found = any(
@@ -1463,12 +1477,27 @@ def calculate_match_percentage(profile, job_title_keywords, skills):
                         break  # Stop after the first match for this position
         
         # Calculate percentage based on skills and job_title filter presence
-        if match_count > 0 and (skills is None or len(skills) == 0):
-            total_percentage += 56
-        elif match_found_in_skills == True and (job_title_keywords is None or len(job_title_keywords) == 0):
-            total_percentage += 66
-        else:
-            total_percentage += 48
+        if master_keyword != None and match_found_in_keyword:
+            if len(skills) == 0 and len(job_title_keywords) == 0:
+                total_percentage += 36
+            elif len(skills) > 0 and len(job_title_keywords) == 0:
+                total_percentage += 18
+            elif len(skills) == 0 and len(job_title_keywords) > 0:
+                total_percentage += 9
+        elif len(job_title_keywords) > 0 and job_title_match_count > 0:
+            if len(skills) == 0 and master_keyword == None:
+                total_percentage += 56
+            elif len(skills) > 0 and master_keyword == None:
+                total_percentage += 48
+            elif len(skills) == 0 and master_keyword != None:
+                total_percentage += 9
+        elif len(skills) > 0 and match_found_in_skills == True:
+            if len(job_title_keywords) == 0 and master_keyword == None:
+                total_percentage += 66
+            elif len(job_title_keywords) > 0 and master_keyword == None:
+                total_percentage += 48
+            elif len(job_title_keywords) == 0 and master_keyword != None:
+                total_percentage += 18
 
         # return total_percentage
         return min(total_percentage, 100)
