@@ -1108,10 +1108,25 @@ def search_profile(request):
             else:
                 combined_records = priority_4.order_by('priority', '-id')
 
+
+            filtered_profiles = []
+            for profile in combined_records:
+                match_score = calculate_match_percentage(profile, job_titles, skills)
+                profile_with_score = {
+                    'profile': model_to_dict(profile),
+                    'years_of_experience': profile.years_of_experience,
+                    'match_score': match_score,
+                }
+                filtered_profiles.append(profile_with_score)
+
+            # Step 5: Sort profiles by match score in descending order
+            filtered_profiles.sort(key=lambda x: x['match_score'], reverse=True)
+            
+
             # Pagination
             page_number = query_dict.get("page", 1)
             records_per_page = 20
-            paginator = Paginator(combined_records, records_per_page)
+            paginator = Paginator(filtered_profiles, records_per_page)
             page_obj = paginator.get_page(page_number)
             context['current_page'] = page_obj.number
             context['total_pages'] = paginator.num_pages
@@ -1134,32 +1149,96 @@ def search_profile(request):
                     'id': action.id
                 })
 
+            
             # Prepare results
-            page_obj = list(page_obj.object_list.values(*search_fields))
-            for item in page_obj:
-                item['show_email1'] = False
-                item['show_email2'] = False
-                item['show_phone1'] = False
-                item['show_phone2'] = False
-                item['is_favourite'] = False
-                item['is_opened'] = False
-                item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
-                item['actions'] = actions_mapping.get(item['id'], [])
-                item['match_score'] = calculate_match_percentage(item, job_titles, skills, keywords)
-                try:
-                    profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
-                    item['show_email1'] = profile_visibility.show_email1
-                    item['show_email2'] = profile_visibility.show_email2
-                    item['show_phone1'] = profile_visibility.show_phone1
-                    item['show_phone2'] = profile_visibility.show_phone2
-                    item['is_favourite'] = profile_visibility.is_favourite
-                    if item['show_email1'] or item['show_email2'] or item['show_phone1'] or item['show_phone2']:
-                        item['is_opened'] = True
-                except Exception as e:
-                    print(e)
-            # page_obj = update_country(page_obj_dicts, location)
-            page_obj = update_country(page_obj, location)
+            page_obj_list = []
+            for item in page_obj.object_list:
+                visibility_toggle = ProfileVisibilityToggle.objects.filter(candidate__id=item['profile']['id'], search_user_id=user).first()
+                
+                candidate_dict = {
+                    'id': item['profile']['id'],
+                    'full_name': item['profile']['full_name'],
+                    'first_name': item['profile']['first_name'],
+                    'last_name': item['profile']['last_name'],
+                    'headline': item['profile']['headline'],
+                    'current_position': item['profile']['current_position'],
+                    'company_name': item['profile']['company_name'],
+                    'person_city': item['profile']['person_city'],
+                    'person_state': item['profile']['person_state'],
+                    'person_country': item['profile']['person_country'],
+                    'person_industry': item['profile']['person_industry'],
+                    'tags': item['profile']['tags'],
+                    'person_skills': item['profile']['person_skills'],
+                    'education_experience': item['profile']['education_experience'],
+                    'company_website': item['profile']['company_website'],
+                    'email1': item['profile']['email1'],
+                    'email2': item['profile']['email2'],
+                    'phone1': item['profile']['phone1'],
+                    'phone2': item['profile']['phone2'],
+                    'person_linkedin_url': item['profile']['person_linkedin_url'],
+                    'company_size_from': item['profile']['company_size_from'],
+                    'company_size_to': item['profile']['company_size_to'],
+                    'current_position_2': item['profile']['current_position_2'],
+                    'current_company_2': item['profile']['current_company_2'],
+                    'previous_position_2': item['profile']['previous_position_2'],
+                    'previous_company_2': item['profile']['previous_company_2'],
+                    'previous_position_3': item['profile']['previous_position_3'],
+                    'previous_company_3': item['profile']['previous_company_3'],
+                    'company_city': item['profile']['company_city'],
+                    'company_state': item['profile']['company_state'],
+                    'company_country': item['profile']['company_country'],
+                    'person_angellist_url': item['profile']['person_angellist_url'],
+                    'person_crunchbase_url': item['profile']['person_crunchbase_url'],
+                    'person_twitter_url': item['profile']['person_twitter_url'],
+                    'person_facebook_url': item['profile']['person_facebook_url'],
+                    'company_linkedin_url': item['profile']['company_linkedin_url'],
+                    'person_image_url': item['profile']['person_image_url'],
+                    'company_logo_url': item['profile']['company_logo_url'],
+                    'match_score': item['match_score'],
+                    'years_of_experience': item['years_of_experience']
+                }
+                candidate_dict['actions'] = actions_mapping.get(item['profile']['id'], [])
+                candidate_dict['show_email1'] = visibility_toggle.show_email1 if visibility_toggle else False
+                candidate_dict['show_email2'] = visibility_toggle.show_email2 if visibility_toggle else False
+                candidate_dict['show_phone1'] = visibility_toggle.show_phone1 if visibility_toggle else False
+                candidate_dict['show_phone2'] = visibility_toggle.show_phone2 if visibility_toggle else False
+                candidate_dict['is_favourite'] = visibility_toggle.is_favourite if visibility_toggle else False
+                candidate_dict['is_saved'] = CandidateProfiles.is_saved_for_user(candidate_dict['id'], user)
+                candidate_dict['is_opened'] = False
+                if candidate_dict['show_email1'] or candidate_dict['show_email2'] or candidate_dict['show_phone1'] or candidate_dict['show_phone2']:
+                        candidate_dict['is_opened'] = True
+                page_obj_list.append(candidate_dict)
+
+            page_obj = update_country(page_obj_list, location)
             total_records = paginator.count
+
+
+            # # Prepare results
+            # page_obj = list(page_obj.object_list.values(*search_fields))
+            # for item in page_obj:
+            #     item['show_email1'] = False
+            #     item['show_email2'] = False
+            #     item['show_phone1'] = False
+            #     item['show_phone2'] = False
+            #     item['is_favourite'] = False
+            #     item['is_opened'] = False
+            #     item['is_saved'] = CandidateProfiles.is_saved_for_user(item['id'], user)
+            #     item['actions'] = actions_mapping.get(item['id'], [])
+            #     item['match_score'] = calculate_match_percentage(item, job_titles, skills, keywords)
+            #     try:
+            #         profile_visibility = ProfileVisibilityToggle.objects.get(search_user_id=user, candidate_id=item['id'])
+            #         item['show_email1'] = profile_visibility.show_email1
+            #         item['show_email2'] = profile_visibility.show_email2
+            #         item['show_phone1'] = profile_visibility.show_phone1
+            #         item['show_phone2'] = profile_visibility.show_phone2
+            #         item['is_favourite'] = profile_visibility.is_favourite
+            #         if item['show_email1'] or item['show_email2'] or item['show_phone1'] or item['show_phone2']:
+            #             item['is_opened'] = True
+            #     except Exception as e:
+            #         print(e)
+            # # page_obj = update_country(page_obj_dicts, location)
+            # page_obj = update_country(page_obj, location)
+            # total_records = paginator.count
 
             context['start_record'] = 0 if total_records == 0 else (page_number - 1) * records_per_page + 1
             context['end_record'] = 0 if total_records == 0 else context['start_record'] + len(page_obj) - 1
